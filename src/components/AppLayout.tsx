@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { clearToken } from "../api/client";
+import { updateSW } from "../main";
 
 const linkClasses = ({ isActive }: { isActive: boolean }) =>
   [
@@ -9,6 +11,13 @@ const linkClasses = ({ isActive }: { isActive: boolean }) =>
 
 const AppLayout = () => {
   const navigate = useNavigate();
+  const [showUpdate, setShowUpdate] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setShowUpdate(true);
+    window.addEventListener("pwa:need-refresh", handler);
+    return () => window.removeEventListener("pwa:need-refresh", handler);
+  }, []);
 
   const handleLogout = () => {
     clearToken();
@@ -43,6 +52,20 @@ const AppLayout = () => {
       <main className="mx-auto max-w-5xl px-4 py-6">
         <Outlet />
       </main>
+      {showUpdate && (
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <div className="flex flex-col items-start justify-between gap-3 rounded-lg bg-blue-600 p-4 text-white shadow-lg sm:flex-row sm:items-center">
+            <span className="text-sm font-semibold">Nova versão disponível</span>
+            <button
+              type="button"
+              onClick={() => updateSW(true)}
+              className="rounded bg-white px-3 py-1 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+            >
+              Atualizar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

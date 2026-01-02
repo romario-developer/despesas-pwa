@@ -4,8 +4,14 @@ import "./index.css";
 import AppRouter from "./routes/AppRouter";
 import { registerSW } from "virtual:pwa-register";
 
-registerSW({
+export const updateSW = registerSW({
   immediate: true,
+  onNeedRefresh() {
+    window.dispatchEvent(new Event("pwa:need-refresh"));
+  },
+  onOfflineReady() {
+    console.log("PWA pronto para uso offline");
+  },
 });
 
 const rootElement = document.getElementById("root");
