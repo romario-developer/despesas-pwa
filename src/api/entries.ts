@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { EntriesResponse } from "../types";
+import type { EntriesResponse, Entry, EntryPayload } from "../types";
 
 export type ListEntriesParams = {
   from?: string;
@@ -20,4 +20,28 @@ export const listEntries = (params: ListEntriesParams = {}) => {
   const path = query ? `/api/entries?${query}` : "/api/entries";
 
   return apiFetch<EntriesResponse>(path);
+};
+
+export const getEntry = (id: string) => {
+  return apiFetch<Entry>(`/api/entries/${id}`);
+};
+
+export const createEntry = (payload: EntryPayload) => {
+  return apiFetch<Entry>("/api/entries", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const updateEntry = (id: string, payload: EntryPayload) => {
+  return apiFetch<Entry>(`/api/entries/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const deleteEntry = (id: string) => {
+  return apiFetch<void>(`/api/entries/${id}`, {
+    method: "DELETE",
+  });
 };

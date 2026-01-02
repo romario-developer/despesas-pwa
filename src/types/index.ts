@@ -22,3 +22,11 @@ export interface Summary {
 export type EntriesResponse = Entry[];
 
 export type CategoriesResponse = string[];
+
+export interface EntryPayload {
+  description: string;
+  amount: number;
+  category: string;
+  date: string;
+  source?: string;
+}

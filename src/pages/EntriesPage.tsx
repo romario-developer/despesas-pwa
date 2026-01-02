@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { listCategories } from "../api/categories";
-import { listEntries } from "../api/entries";
+import { deleteEntry, listEntries } from "../api/entries";
 import MonthPicker from "../components/MonthPicker";
+import ConfirmDialog from "../components/ConfirmDialog";
+import Toast from "../components/Toast";
 import { monthToRange } from "../utils/dateRange";
 import { formatCurrency, formatDate } from "../utils/format";
 import type { Entry } from "../types";
@@ -10,6 +12,8 @@ import type { Entry } from "../types";
 const currentMonth = () => new Date().toISOString().slice(0, 7);
 
 const EntriesPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [month, setMonth] = useState(currentMonth());
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
@@ -17,6 +21,19 @@ const EntriesPage = () => {
   const [entries, setEntries] = useState<Entry[] | unknown>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const state = location.state as { toast?: { message: string; type: "success" | "error" } };
+    if (state?.toast) {
+      setToast(state.toast);
+      navigate(location.pathname + location.search, { replace: true });
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -74,6 +91,30 @@ const EntriesPage = () => {
     () => safeEntries.reduce((sum, entry) => sum + entry.amount, 0),
     [safeEntries],
   );
+
+  const handleDeleteConfirm = async () => {
+    if (!entryToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await deleteEntry(entryToDelete.id);
+      setEntries((prev: Entry[] | unknown) => {
+        const current = Array.isArray(prev) ? prev : [];
+        return current.filter((item) => item.id !== entryToDelete.id);
+      });
+      setToast({ message: "Lancamento removido", type: "success" });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao remover lancamento.";
+      setToast({ message, type: "error" });
+    } finally {
+      setIsDeleting(false);
+      setEntryToDelete(null);
+    }
+  };
+
+  const handleDeleteClick = (entry: Entry) => {
+    setEntryToDelete(entry);
+  };
 
   return (
     <div className="space-y-4">
@@ -163,6 +204,21 @@ const EntriesPage = () => {
                       {formatDate(entry.date)} - {entry.category}
                     </p>
                     <p className="text-xs text-slate-500">Origem: {entry.source}</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Link
+                        to={`/entries/${entry.id}/edit`}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        Editar
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClick(entry)}
+                        className="text-xs font-semibold text-red-600 hover:underline"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -179,6 +235,7 @@ const EntriesPage = () => {
                     <th className="px-4 py-3">Categoria</th>
                     <th className="px-4 py-3">Origem</th>
                     <th className="px-4 py-3 text-right">Valor</th>
+                    <th className="px-4 py-3 text-right">Acoes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -196,11 +253,28 @@ const EntriesPage = () => {
                         <td className="px-4 py-3 text-right font-semibold text-slate-900">
                           {formatCurrency(entry.amount)}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              to={`/entries/${entry.id}/edit`}
+                              className="text-xs font-semibold text-primary hover:underline"
+                            >
+                              Editar
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteClick(entry)}
+                              className="text-xs font-semibold text-red-600 hover:underline"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td className="px-4 py-4 text-sm text-slate-500" colSpan={5}>
+                      <td className="px-4 py-4 text-sm text-slate-500" colSpan={6}>
                         Nenhum lancamento encontrado.
                       </td>
                     </tr>
@@ -211,6 +285,23 @@ const EntriesPage = () => {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(entryToDelete)}
+        title="Confirmar exclusao"
+        description="Tem certeza? Essa acao nao pode ser desfeita."
+        confirmLabel={isDeleting ? "Removendo..." : "Excluir"}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => !isDeleting && setEntryToDelete(null)}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

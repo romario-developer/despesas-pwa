@@ -3,7 +3,8 @@ import AppLayout from "../components/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import DashboardPage from "../pages/DashboardPage";
 import EntriesPage from "../pages/EntriesPage";
-import EntryFormPlaceholder from "../pages/EntryFormPlaceholder";
+import EntryCreatePage from "../pages/EntryCreatePage";
+import EntryEditPage from "../pages/EntryEditPage";
 import LoginPage from "../pages/LoginPage";
 
 const AppRouter = () => (
@@ -19,8 +20,8 @@ const AppRouter = () => (
       >
         <Route path="/" element={<DashboardPage />} />
         <Route path="/entries" element={<EntriesPage />} />
-        <Route path="/entries/new" element={<EntryFormPlaceholder />} />
-        <Route path="/entries/:id/edit" element={<EntryFormPlaceholder />} />
+        <Route path="/entries/new" element={<EntryCreatePage />} />
+        <Route path="/entries/:id/edit" element={<EntryEditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
