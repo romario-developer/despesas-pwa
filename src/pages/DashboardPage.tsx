@@ -4,7 +4,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -108,47 +107,27 @@ const DashboardPage = () => {
   }, [month]);
 
   const pieData = useMemo(() => {
-    if (Array.isArray(summary?.totalPorCategoria)) {
-      return (summary.totalPorCategoria as Array<{ category?: string; total?: unknown }>)
-        .map((item) => ({
-          name: item?.category ?? "",
-          value: Number(item?.total) || 0,
-        }))
-        .filter((item) => item.value > 0);
-    }
+    const list = Array.isArray(summary?.totalPorCategoria)
+      ? summary.totalPorCategoria
+      : [];
 
-    if (summary?.totalPorCategoria && typeof summary.totalPorCategoria === "object") {
-      return Object.entries(summary.totalPorCategoria)
-        .map(([name, total]) => ({
-          name,
-          value: Number(total) || 0,
-        }))
-        .filter((item) => item.value > 0);
-    }
-
-    return [];
+    return list
+      .map((item) => ({
+        name: item.category ?? "Sem categoria",
+        value: Number(item.total) || 0,
+      }))
+      .filter((item) => item.value > 0);
   }, [summary?.totalPorCategoria]);
 
-  const lineData = useMemo(() => {
-    if (Array.isArray(summary?.totalPorDia)) {
-      return (summary.totalPorDia as Array<{ date?: string; total?: unknown }>)
-        .map((item) => ({
-          date: item?.date ?? "",
-          total: Number(item?.total) || 0,
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-    }
-
-    if (summary?.totalPorDia && typeof summary.totalPorDia === "object") {
-      return Object.entries(summary.totalPorDia)
-        .map(([date, total]) => ({
-          date,
-          total: Number(total) || 0,
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-    }
-
-    return [];
+  const dayData = useMemo(() => {
+    const list = Array.isArray(summary?.totalPorDia) ? summary.totalPorDia : [];
+    return list
+      .map((item) => ({
+        date: item.date,
+        total: Number(item.total) || 0,
+      }))
+      .filter((x) => x.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
   }, [summary?.totalPorDia]);
 
   const daysInMonth = useMemo(() => {
@@ -250,39 +229,33 @@ const DashboardPage = () => {
                 Total por categoria
               </h3>
             </div>
-            {pieData.length ? (
-              <div className="h-72">
+            {pieData.length === 0 ? (
+              <div className="text-sm text-slate-500">Sem dados neste mes</div>
+            ) : (
+              <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={pieData}
                       dataKey="value"
                       nameKey="name"
-                      cx="50%"
-                      cy="50%"
+                      innerRadius={55}
                       outerRadius={90}
-                      innerRadius={50}
                       paddingAngle={2}
-                      label
                     >
-                      {pieData.map((entry, index) => (
+                      {pieData.map((_, index) => (
                         <Cell
-                          key={entry.name}
+                          key={index}
                           fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
                         />
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number | string | undefined) =>
-                        formatCurrency(Number(value ?? 0))
-                      }
+                      formatter={(v: unknown) => formatBRL(Number(v) || 0)}
                     />
-                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            ) : (
-              <p className="text-sm text-slate-500">Sem dados para este mes.</p>
             )}
           </div>
 
@@ -290,24 +263,31 @@ const DashboardPage = () => {
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">Total por dia</h3>
             </div>
-            {lineData.length ? (
-              <div className="h-72">
+            {dayData.length === 0 ? (
+              <div className="text-sm text-slate-500">Sem dados neste mes</div>
+            ) : (
+              <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={lineData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
+                  <BarChart data={dayData}>
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d: string) => d.slice(8, 10)}
+                    />
+                    <YAxis
+                      tickFormatter={(v: number | string) =>
+                        formatBRL(Number(v) || 0)
+                      }
+                    />
                     <Tooltip
-                      formatter={(value: number | string | undefined) =>
-                        formatCurrency(Number(value ?? 0))
+                      labelFormatter={(label: string) => `Dia ${label}`}
+                      formatter={(v: unknown) =>
+                        formatBRL(Number(v) || 0)
                       }
                     />
                     <Bar dataKey="total" fill="#0f766e" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            ) : (
-              <p className="text-sm text-slate-500">Sem dados para este mes.</p>
             )}
           </div>
         </div>
