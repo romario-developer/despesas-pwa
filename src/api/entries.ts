@@ -10,7 +10,7 @@ export type ListEntriesParams = {
 
 type EntriesApiResponse = Entry[] | { items?: Entry[] } | null;
 
-export const listEntries = async (params: ListEntriesParams = {}): Promise<Entry[]> => {
+export async function listEntries(params: ListEntriesParams = {}): Promise<Entry[]> {
   const search = new URLSearchParams();
 
   if (params.from) search.append("from", params.from);
@@ -23,15 +23,16 @@ export const listEntries = async (params: ListEntriesParams = {}): Promise<Entry
 
   const data = await apiFetch<EntriesApiResponse>(path);
 
-  if (Array.isArray(data)) return data;
+  if (Array.isArray(data)) {
+    return data;
+  }
 
-  if (data && typeof data === "object" && "items" in data) {
-    const items = (data as { items?: Entry[] }).items;
-    if (Array.isArray(items)) return items;
+  if (data && Array.isArray(data.items)) {
+    return data.items;
   }
 
   return [];
-};
+}
 
 export const getEntry = (id: string) => {
   return apiFetch<Entry>(`/api/entries/${id}`);
