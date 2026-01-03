@@ -269,6 +269,7 @@ const DashboardPage = () => {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dayData}>
+                    <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(d: string) => d.slice(8, 10)}
