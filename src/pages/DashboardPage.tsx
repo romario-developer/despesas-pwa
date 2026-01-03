@@ -108,21 +108,48 @@ const DashboardPage = () => {
   }, [month]);
 
   const pieData = useMemo(() => {
-    if (!summary) return [];
-    return Object.entries(summary.totalPorCategoria ?? {}).map(
-      ([name, value]) => ({
-        name,
-        value,
-      }),
-    );
-  }, [summary]);
+    if (Array.isArray(summary?.totalPorCategoria)) {
+      return (summary.totalPorCategoria as Array<{ category?: string; total?: unknown }>)
+        .map((item) => ({
+          name: item?.category ?? "",
+          value: Number(item?.total) || 0,
+        }))
+        .filter((item) => item.value > 0);
+    }
 
-  const barData = useMemo(() => {
-    if (!summary) return [];
-    return Object.entries(summary.totalPorDia ?? {})
-      .map(([date, value]) => ({ date, value }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [summary]);
+    if (summary?.totalPorCategoria && typeof summary.totalPorCategoria === "object") {
+      return Object.entries(summary.totalPorCategoria)
+        .map(([name, total]) => ({
+          name,
+          value: Number(total) || 0,
+        }))
+        .filter((item) => item.value > 0);
+    }
+
+    return [];
+  }, [summary?.totalPorCategoria]);
+
+  const lineData = useMemo(() => {
+    if (Array.isArray(summary?.totalPorDia)) {
+      return (summary.totalPorDia as Array<{ date?: string; total?: unknown }>)
+        .map((item) => ({
+          date: item?.date ?? "",
+          total: Number(item?.total) || 0,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    if (summary?.totalPorDia && typeof summary.totalPorDia === "object") {
+      return Object.entries(summary.totalPorDia)
+        .map(([date, total]) => ({
+          date,
+          total: Number(total) || 0,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    return [];
+  }, [summary?.totalPorDia]);
 
   const daysInMonth = useMemo(() => {
     const [year, monthStr] = month.split("-").map(Number);
@@ -263,10 +290,10 @@ const DashboardPage = () => {
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">Total por dia</h3>
             </div>
-            {barData.length ? (
+            {lineData.length ? (
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData}>
+                  <BarChart data={lineData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
@@ -275,7 +302,7 @@ const DashboardPage = () => {
                         formatCurrency(Number(value ?? 0))
                       }
                     />
-                    <Bar dataKey="value" fill="#0f766e" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="total" fill="#0f766e" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
