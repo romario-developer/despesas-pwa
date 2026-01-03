@@ -15,10 +15,10 @@ import {
 import MonthPicker from "../components/MonthPicker";
 import { listEntries } from "../api/entries";
 import { getSummary } from "../api/summary";
-import { loadPlanning } from "../storage/planningStorage";
+import { getPlanning } from "../api/planning";
 import { monthToRange } from "../utils/dateRange";
 import { formatBRL, formatCurrency, formatDate } from "../utils/format";
-import type { Entry, Summary } from "../types";
+import { DEFAULT_PLANNING, type Entry, type Planning, type Summary } from "../types";
 
 const currentMonth = () => new Date().toISOString().slice(0, 7);
 
@@ -53,9 +53,10 @@ const DashboardPage = () => {
 
       try {
         const range = monthToRange(month);
-        const [summaryData, entriesData] = await Promise.all([
+        const [summaryData, entriesData, planningData] = await Promise.all([
           getSummary(month),
           listEntries({ from: range.from, to: range.to }),
+          getPlanning(),
         ]);
 
         const normalizedEntries = Array.isArray(entriesData) ? entriesData : [];
@@ -69,14 +70,21 @@ const DashboardPage = () => {
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
 
-        const planning = loadPlanning();
-        const salary = planning.salaryByMonth?.[month] ?? 0;
+        const planning = (planningData ?? DEFAULT_PLANNING) as Planning;
+        const salaryValue = Number(planning.salaryByMonth?.[month]);
+        const salary = Number.isFinite(salaryValue) ? salaryValue : 0;
         const extrasList = Array.isArray(planning.extrasByMonth?.[month])
           ? planning.extrasByMonth?.[month]
           : [];
-        const extras = extrasList.reduce((sum, item) => sum + (item?.amount ?? 0), 0);
+        const extras = extrasList.reduce((sum, item) => {
+          const amount = Number(item?.amount);
+          return sum + (Number.isFinite(amount) ? amount : 0);
+        }, 0);
         const fixed = Array.isArray(planning.fixedBills)
-          ? planning.fixedBills.reduce((sum, bill) => sum + (bill?.amount ?? 0), 0)
+          ? planning.fixedBills.reduce((sum, bill) => {
+              const amount = Number(bill?.amount);
+              return sum + (Number.isFinite(amount) ? amount : 0);
+            }, 0)
           : 0;
 
         setSummary(normalizedSummary);
@@ -90,6 +98,7 @@ const DashboardPage = () => {
         setSummary(null);
         setLatestEntries([]);
         setEntriesCount(0);
+        setPlanningTotals({ salary: 0, extras: 0, fixed: 0 });
       } finally {
         setIsLoading(false);
       }
