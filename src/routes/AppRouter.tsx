@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import ApiHealthCheck from "../components/ApiHealthCheck";
 import AppLayout from "../components/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoginPage from "../pages/LoginPage";
@@ -12,7 +13,8 @@ const PlanningPage = lazy(() => import("../pages/PlanningPage"));
 
 const AppRouter = () => (
   <BrowserRouter>
-    <Suspense fallback={<div className="p-6">Carregando…</div>}>
+    <ApiHealthCheck />
+    <Suspense fallback={<div className="p-6">Carregando.</div>}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route

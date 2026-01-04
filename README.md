@@ -15,6 +15,9 @@ PWA em React + TypeScript + Tailwind consumindo a API de despesas.
 ```
 # Base da API - nao inclua /api no final
 VITE_API_URL=https://chatbot-despesas.onrender.com
+
+# Opcional: logs adicionais de API em producao
+# VITE_DEBUG_API=true
 ```
 O frontend prefixa todas as rotas com `/api/...`. Se `VITE_API_URL` terminar com `/api`, a URL final ficara duplicada (`/api/api/...`) e resultara em 404.
 
