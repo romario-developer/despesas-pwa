@@ -23,12 +23,18 @@ const LoginPage = () => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    event.stopPropagation();
+    // Evita qualquer submit nativo residual que geraria reload
+    event.nativeEvent?.stopImmediatePropagation?.();
+
+    if (isLoading) return;
     setError(null);
     setIsLoading(true);
     try {
       if (import.meta.env.DEV) {
         console.log("[login] baseURL:", apiBaseURL);
         console.log("[login] endpoint:", "/api/auth/login");
+        console.log("[login] submit controlado via React (sem reload).");
       }
 
       const response = await login(password);
@@ -48,7 +54,7 @@ const LoginPage = () => {
         <h1 className="mb-6 text-center text-2xl font-semibold text-slate-900">
           Despesas
         </h1>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" noValidate onSubmit={handleSubmit}>
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-700">Senha</span>
             <input
