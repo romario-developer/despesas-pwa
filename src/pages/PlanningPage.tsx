@@ -69,8 +69,10 @@ const PlanningPage = () => {
         setIsLoading(true);
         const data = await getPlanning();
         setPlanning(data ?? DEFAULT_PLANNING);
-      } catch {
-        setToast({ message: "Erro ao carregar planejamento", type: "error" });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Erro ao carregar planejamento";
+        setToast({ message, type: "error" });
       } finally {
         setIsLoading(false);
       }
@@ -126,8 +128,9 @@ const PlanningPage = () => {
       await savePlanning(next);
       setToast({ message: "Salario salvo", type: "success" });
       setErrors((prev) => ({ ...prev, salary: undefined }));
-    } catch {
-      setToast({ message: "Erro ao salvar salario", type: "error" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao salvar salario";
+      setToast({ message, type: "error" });
     }
   };
 
@@ -194,8 +197,10 @@ const PlanningPage = () => {
         message: extraForm.id ? "Entrada extra atualizada" : "Entrada extra adicionada",
         type: "success",
       });
-    } catch {
-      setToast({ message: "Erro ao salvar entrada extra", type: "error" });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao salvar entrada extra";
+      setToast({ message, type: "error" });
     }
     resetExtraForm();
   };
@@ -225,8 +230,9 @@ const PlanningPage = () => {
     try {
       await savePlanning(nextPlanning);
       setToast({ message: "Entrada extra removida", type: "success" });
-    } catch {
-      setToast({ message: "Erro ao remover extra", type: "error" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao remover extra";
+      setToast({ message, type: "error" });
     }
     if (extraForm.id === extra.id) {
       resetExtraForm();
@@ -292,8 +298,9 @@ const PlanningPage = () => {
         message: billForm.id ? "Conta fixa atualizada" : "Conta fixa adicionada",
         type: "success",
       });
-    } catch {
-      setToast({ message: "Erro ao salvar conta fixa", type: "error" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao salvar conta fixa";
+      setToast({ message, type: "error" });
     }
     resetBillForm();
   };
@@ -317,8 +324,10 @@ const PlanningPage = () => {
     try {
       await savePlanning(nextPlanning);
       setToast({ message: "Conta fixa removida", type: "success" });
-    } catch {
-      setToast({ message: "Erro ao remover conta fixa", type: "error" });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao remover conta fixa";
+      setToast({ message, type: "error" });
     }
     if (billForm.id === bill.id) {
       resetBillForm();

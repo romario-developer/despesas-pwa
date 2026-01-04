@@ -105,8 +105,10 @@ const DashboardPage = () => {
         setLatestEntries(sortedEntries.slice(0, 10));
         setPlanningTotals({ salary, extras, fixed });
       } catch (err) {
-        setError("Falha ao carregar resumo do mes");
-        setToast({ message: "Falha ao carregar resumo do mes", type: "error" });
+        const message =
+          err instanceof Error ? err.message : "Falha ao carregar resumo do mes";
+        setError(message);
+        setToast({ message, type: "error" });
         setSummary(null);
         setLatestEntries([]);
         setEntriesCount(0);
