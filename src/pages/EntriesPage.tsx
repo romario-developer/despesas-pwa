@@ -9,33 +9,17 @@ import { monthToRange } from "../utils/dateRange";
 import { formatCurrency, formatDate } from "../utils/format";
 import type { Entry } from "../types";
 
-const currentMonth = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-};
-
-const normalizeMonth = (value: string) => {
-  const normalizedValue = value || "";
-  const [year = "", rawMonth = ""] = normalizedValue.split("-");
-  if (/^\d{4}$/.test(year)) {
-    const monthPart = rawMonth.padStart(2, "0").slice(0, 2);
-    if (/^\d{2}$/.test(monthPart)) {
-      return `${year}-${monthPart}`;
-    }
-  }
-
-  return currentMonth();
-};
+const currentMonth = () => new Date().toISOString().slice(0, 7);
 
 const EntriesPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [month, setMonth] = useState(() => normalizeMonth(currentMonth()));
+  const [month, setMonth] = useState(currentMonth());
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [categories, setCategories] = useState<unknown>([]);
   const [entries, setEntries] = useState<Entry[] | unknown>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -152,11 +136,7 @@ const EntriesPage = () => {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <MonthPicker
-          label="Mes"
-          value={month}
-          onChange={(next) => setMonth(normalizeMonth(next))}
-        />
+        <MonthPicker label="Mes" value={month} onChange={setMonth} />
 
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
           Categoria
