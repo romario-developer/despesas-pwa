@@ -26,7 +26,10 @@ export async function exportExpensesCsv(month: string, token: string) {
 
   const res = await fetch(url, {
     method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "x-admin-token": token,
+    },
   });
 
   if (!res.ok) {
