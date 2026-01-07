@@ -599,7 +599,7 @@ const DashboardPage = () => {
         <div className="space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-900">Visão Mensal</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">Visão Mensal v2</h2>
               <p className="text-sm text-slate-600">
                 Resumo mensal, gráficos e atalhos para acompanhar seus gastos.
               </p>
