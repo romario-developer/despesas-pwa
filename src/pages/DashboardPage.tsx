@@ -555,7 +555,6 @@ const DashboardPage = () => {
                 value="Abrir"
                 subtitle={item.subtitle}
                 onClick={item.onClick}
-                className="min-h-[88px] flex flex-col justify-between"
               />
             ))}
           </div>
