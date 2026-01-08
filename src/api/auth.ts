@@ -8,3 +8,11 @@ export const login = async (password: string): Promise<AuthResponse> => {
     data: { password },
   });
 };
+
+export const changePassword = (currentPassword: string, newPassword: string) => {
+  return apiRequest<void>({
+    url: "/api/me/password",
+    method: "POST",
+    data: { currentPassword, newPassword },
+  });
+};

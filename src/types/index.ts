@@ -1,5 +1,6 @@
 export interface AuthResponse {
   token: string;
+  mustChangePassword?: boolean;
 }
 
 export interface Entry {

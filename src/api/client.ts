@@ -2,6 +2,7 @@ import type { AxiosError, AxiosRequestConfig } from "axios";
 import { api, apiBaseURL, apiHadApiSuffix, shouldLogApi } from "../services/api";
 
 const AUTH_TOKEN_KEY = "despesas_token";
+const AUTH_MUST_CHANGE_KEY = "despesas_must_change_password";
 const FAILURE_WINDOW_MS = 30_000;
 const FAILURE_LIMIT = 5;
 const BLOCK_DURATION_MS = 60_000;
@@ -22,7 +23,18 @@ export const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
 
 export const saveToken = (token: string) => localStorage.setItem(AUTH_TOKEN_KEY, token);
 
-export const clearToken = () => localStorage.removeItem(AUTH_TOKEN_KEY);
+export const getStoredMustChangePassword = () =>
+  localStorage.getItem(AUTH_MUST_CHANGE_KEY) === "true";
+
+export const setMustChangePassword = (value: boolean) =>
+  localStorage.setItem(AUTH_MUST_CHANGE_KEY, value ? "true" : "false");
+
+export const clearMustChangePassword = () => localStorage.removeItem(AUTH_MUST_CHANGE_KEY);
+
+export const clearToken = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  clearMustChangePassword();
+};
 
 const redirectToLogin = () => {
   if (window.location.pathname !== "/login") {

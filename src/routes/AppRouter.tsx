@@ -10,6 +10,7 @@ const EntriesPage = lazy(() => import("../pages/EntriesPage"));
 const EntryCreatePage = lazy(() => import("../pages/EntryCreatePage"));
 const EntryEditPage = lazy(() => import("../pages/EntryEditPage"));
 const PlanningPage = lazy(() => import("../pages/PlanningPage"));
+const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
 
 const AppRouter = () => (
   <BrowserRouter>
@@ -17,6 +18,14 @@ const AppRouter = () => (
     <Suspense fallback={<div className="p-6">Carregando.</div>}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <ChangePasswordPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           element={
             <ProtectedRoute>

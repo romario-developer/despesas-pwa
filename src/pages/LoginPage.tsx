@@ -2,7 +2,12 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
-import { getStoredToken, saveToken } from "../api/client";
+import {
+  getStoredMustChangePassword,
+  getStoredToken,
+  saveToken,
+  setMustChangePassword,
+} from "../api/client";
 import { apiBaseURL } from "../services/api";
 
 const LoginPage = () => {
@@ -16,8 +21,9 @@ const LoginPage = () => {
 
   useEffect(() => {
     const existingToken = getStoredToken();
+    const mustChangePassword = getStoredMustChangePassword();
     if (existingToken) {
-      navigate(from, { replace: true });
+      navigate(mustChangePassword ? "/change-password" : from, { replace: true });
     }
   }, [from, navigate]);
 
@@ -39,7 +45,9 @@ const LoginPage = () => {
 
       const response = await login(password);
       saveToken(response.token);
-      navigate(from, { replace: true });
+      const mustChangePassword = Boolean(response.mustChangePassword);
+      setMustChangePassword(mustChangePassword);
+      navigate(mustChangePassword ? "/change-password" : from, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao fazer login.";
       setError(message);
