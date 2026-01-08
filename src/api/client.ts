@@ -2,8 +2,16 @@ import { AxiosHeaders } from "axios";
 import type { AxiosError, AxiosRequestConfig } from "axios";
 import { api, apiBaseURL, apiHadApiSuffix, shouldLogApi } from "../services/api";
 
+<<<<<<< HEAD
 const AUTH_TOKEN_KEY = "despesas_token";
 const AUTH_MUST_CHANGE_KEY = "despesas_must_change_password";
+=======
+const AUTH_TOKEN_KEY = "auth_token";
+const LEGACY_AUTH_TOKEN_KEY = "despesas_token";
+const AUTH_USER_KEY = "auth_user";
+const PLANNING_STORAGE_KEY = "despesas_pwa_planning_v1";
+const LOGIN_MESSAGE_KEY = "despesas_login_message";
+>>>>>>> 379f1e03b89eb5f8e29aaf5abc851d46bda4215d
 const FAILURE_WINDOW_MS = 30_000;
 const FAILURE_LIMIT = 5;
 const BLOCK_DURATION_MS = 60_000;
@@ -20,8 +28,10 @@ type ApiErrorResponse = {
   error?: string;
 };
 
-export const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
+export const getStoredToken = () =>
+  localStorage.getItem(AUTH_TOKEN_KEY) ?? localStorage.getItem(LEGACY_AUTH_TOKEN_KEY);
 
+<<<<<<< HEAD
 const setAuthHeader = (token?: string | null) => {
   if (token) {
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
@@ -47,6 +57,89 @@ export const clearToken = () => {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   clearMustChangePassword();
   setAuthHeader(null);
+=======
+export const saveToken = (token: string) => {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+};
+
+export const clearToken = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+};
+
+type StoredAuthUser = {
+  name?: string;
+  email?: string;
+};
+
+const normalizeStoredUser = (value: unknown): StoredAuthUser | null => {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  const email = typeof data.email === "string" ? data.email.trim() : "";
+  if (!name && !email) return null;
+  return {
+    name: name || undefined,
+    email: email || undefined,
+  };
+};
+
+export const saveAuthUser = (user: StoredAuthUser) => {
+  const payload = normalizeStoredUser(user);
+  if (!payload) return;
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(payload));
+};
+
+export const getStoredAuthUser = (): StoredAuthUser | null => {
+  const raw = localStorage.getItem(AUTH_USER_KEY);
+  if (!raw) return null;
+  try {
+    return normalizeStoredUser(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
+export const clearAuthUser = () => localStorage.removeItem(AUTH_USER_KEY);
+
+export const resetApiFailureTracker = () => {
+  failureTracker.clear();
+};
+
+export const setLoginMessage = (message: string) => {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(LOGIN_MESSAGE_KEY, message);
+};
+
+export const consumeLoginMessage = () => {
+  if (typeof sessionStorage === "undefined") return null;
+  const message = sessionStorage.getItem(LOGIN_MESSAGE_KEY);
+  if (message) {
+    sessionStorage.removeItem(LOGIN_MESSAGE_KEY);
+  }
+  return message;
+};
+
+export const clearAppStorage = () => {
+  if (typeof localStorage !== "undefined") {
+    clearToken();
+    clearAuthUser();
+    localStorage.removeItem(PLANNING_STORAGE_KEY);
+  }
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem(LOGIN_MESSAGE_KEY);
+  }
+  resetApiFailureTracker();
+};
+
+export const logoutAndRedirect = (message?: string) => {
+  clearAppStorage();
+  if (message) {
+    setLoginMessage(message);
+  }
+  redirectToLogin();
+>>>>>>> 379f1e03b89eb5f8e29aaf5abc851d46bda4215d
 };
 
 const redirectToLogin = () => {
@@ -164,6 +257,7 @@ api.interceptors.response.use(
   (error: AxiosError<ApiErrorResponse>) => {
     const status = error.response?.status;
     const fullUrl = resolveFullUrl(error.config ?? {});
+    const path = extractPathname(fullUrl);
     const endpointKey =
       (error.config as AxiosRequestConfig & { __endpointKey?: string })?.__endpointKey ||
       buildEndpointKey(error.config ?? {});
@@ -176,13 +270,10 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
-      clearToken();
-      redirectToLogin();
-      const { justBlocked, blockedUntil } = recordFailure(endpointKey, now);
-      if (justBlocked && shouldLogApi) {
-        // eslint-disable-next-line no-console
-        console.warn("[API BLOCKED] retry loop detected for", endpointKey, "until", blockedUntil);
+      if (path === "/api/auth/login") {
+        return Promise.reject(new Error("Credenciais invalidas."));
       }
+      logoutAndRedirect("Sessao expirada, faca login novamente.");
       return Promise.reject(new Error("Sessao expirada ou nao autenticado."));
     }
 

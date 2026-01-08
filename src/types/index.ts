@@ -1,7 +1,27 @@
+export type AuthUser = {
+  name?: string;
+  email?: string;
+};
+
 export interface AuthResponse {
+<<<<<<< HEAD
   token: string;
   mustChangePassword?: boolean;
+=======
+  token?: string;
+  accessToken?: string;
+  user?: AuthUser;
+  name?: string;
+  email?: string;
+>>>>>>> 379f1e03b89eb5f8e29aaf5abc851d46bda4215d
 }
+
+export type UserMe = {
+  name?: string;
+  email?: string;
+  telegramChatId?: string | number;
+  telegramId?: string | number;
+};
 
 export interface Entry {
   id: string;
