@@ -19,6 +19,7 @@ import DashboardSection from "../components/ui/DashboardSection";
 import InsightCard from "../components/dashboard/cards/InsightCard";
 import MetricCard from "../components/dashboard/cards/MetricCard";
 import ProgressCard from "../components/dashboard/cards/ProgressCard";
+import QuickEntryCard from "../components/dashboard/QuickEntryCard";
 import { listEntries } from "../api/entries";
 import { getSummary } from "../api/summary";
 import { getPlanning } from "../api/planning";
@@ -347,6 +348,7 @@ const DashboardPage = () => {
 
     return (
       <div className="space-y-6 sm:space-y-8">
+        <QuickEntryCard onCreated={() => loadData({ silent: true })} />
         <DashboardSection title="Resumo do mês">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
@@ -673,3 +675,4 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+
