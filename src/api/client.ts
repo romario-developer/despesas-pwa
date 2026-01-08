@@ -2,6 +2,8 @@ import type { AxiosError, AxiosRequestConfig } from "axios";
 import { api, apiBaseURL, apiHadApiSuffix, shouldLogApi } from "../services/api";
 
 const AUTH_TOKEN_KEY = "despesas_token";
+const PLANNING_STORAGE_KEY = "despesas_pwa_planning_v1";
+const LOGIN_MESSAGE_KEY = "despesas_login_message";
 const FAILURE_WINDOW_MS = 30_000;
 const FAILURE_LIMIT = 5;
 const BLOCK_DURATION_MS = 60_000;
@@ -23,6 +25,43 @@ export const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
 export const saveToken = (token: string) => localStorage.setItem(AUTH_TOKEN_KEY, token);
 
 export const clearToken = () => localStorage.removeItem(AUTH_TOKEN_KEY);
+
+export const resetApiFailureTracker = () => {
+  failureTracker.clear();
+};
+
+export const setLoginMessage = (message: string) => {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(LOGIN_MESSAGE_KEY, message);
+};
+
+export const consumeLoginMessage = () => {
+  if (typeof sessionStorage === "undefined") return null;
+  const message = sessionStorage.getItem(LOGIN_MESSAGE_KEY);
+  if (message) {
+    sessionStorage.removeItem(LOGIN_MESSAGE_KEY);
+  }
+  return message;
+};
+
+export const clearAppStorage = () => {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(PLANNING_STORAGE_KEY);
+  }
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.removeItem(LOGIN_MESSAGE_KEY);
+  }
+  resetApiFailureTracker();
+};
+
+export const logoutAndRedirect = (message?: string) => {
+  clearAppStorage();
+  if (message) {
+    setLoginMessage(message);
+  }
+  redirectToLogin();
+};
 
 const redirectToLogin = () => {
   if (window.location.pathname !== "/login") {
@@ -150,13 +189,7 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
-      clearToken();
-      redirectToLogin();
-      const { justBlocked, blockedUntil } = recordFailure(endpointKey, now);
-      if (justBlocked && shouldLogApi) {
-        // eslint-disable-next-line no-console
-        console.warn("[API BLOCKED] retry loop detected for", endpointKey, "until", blockedUntil);
-      }
+      logoutAndRedirect("Sessao expirada, faca login novamente.");
       return Promise.reject(new Error("Sessao expirada ou nao autenticado."));
     }
 

@@ -3,6 +3,7 @@ import { createTelegramLinkCode, type TelegramLinkCodeResponse } from "../api/te
 import MonthPicker from "../components/MonthPicker";
 import Toast from "../components/Toast";
 import { getPlanning, savePlanning } from "../api/planning";
+import { useAuth } from "../contexts/AuthContext";
 import { formatBRL, parseCurrencyInput } from "../utils/format";
 import { DEFAULT_PLANNING, type Planning, type PlanningBill, type PlanningExtra } from "../types";
 
@@ -28,6 +29,7 @@ const getMonthKey = (value: string | Date) => {
 type ToastState = { message: string; type: "success" | "error" } | null;
 
 const PlanningPage = () => {
+  const { user, status: authStatus } = useAuth();
   const [month, setMonth] = useState(currentMonth());
   const [planning, setPlanning] = useState<Planning>({
     salaryByMonth: {},
@@ -62,6 +64,20 @@ const PlanningPage = () => {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   const monthKey = useMemo(() => getMonthKey(month), [month]);
+  const telegramId = user?.telegramChatId ?? user?.telegramId;
+  const isTelegramConnected = Boolean(telegramId);
+  const telegramStatusLabel =
+    authStatus === "loading"
+      ? "Carregando"
+      : isTelegramConnected
+        ? "Conectado"
+        : "Nao conectado";
+  const telegramStatusClass =
+    authStatus === "loading"
+      ? "bg-slate-100 text-slate-600"
+      : isTelegramConnected
+        ? "bg-emerald-100 text-emerald-800"
+        : "bg-amber-100 text-amber-800";
 
   useEffect(() => {
     const load = async () => {
@@ -627,22 +643,50 @@ const PlanningPage = () => {
       </div>
 
       <div className="card space-y-3 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">Conectar Telegram</h3>
             <p className="text-sm text-slate-600">
-              Gere um codigo e use no bot para vincular sua conta.
+              Vincule sua conta para enviar comandos pelo bot.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleGenerateTelegramCode}
-            disabled={isGeneratingLink}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-80"
-          >
-            {isGeneratingLink ? "Gerando..." : "Conectar Telegram"}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${telegramStatusClass}`}
+            >
+              Status: {telegramStatusLabel}
+            </span>
+            <button
+              type="button"
+              onClick={handleGenerateTelegramCode}
+              disabled={isGeneratingLink || authStatus === "loading"}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-80"
+            >
+              {isGeneratingLink
+                ? "Gerando..."
+                : isTelegramConnected
+                  ? "Gerar novo codigo"
+                  : "Conectar Telegram"}
+            </button>
+          </div>
         </div>
+
+        {isTelegramConnected ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            Telegram conectado com sucesso.
+            <span className="mt-1 block text-xs text-emerald-700">
+              Se quiser trocar a conta, gere um novo codigo e envie ao bot.
+            </span>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-sm font-semibold text-slate-900">Como conectar</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+              <li>Gerar o codigo no botao acima.</li>
+              <li>Enviar o codigo para o bot no Telegram.</li>
+            </ol>
+          </div>
+        )}
 
         {telegramLink ? (
           <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -673,12 +717,12 @@ const PlanningPage = () => {
               </p>
             )}
           </div>
-        ) : (
+        ) : !isTelegramConnected ? (
           <p className="text-sm text-slate-600">
             Clique em "Conectar Telegram" para gerar um codigo e, no aplicativo do Telegram,
             envie: <span className="font-mono font-semibold text-primary">/link CODIGO</span>.
           </p>
-        )}
+        ) : null}
       </div>
 
       {toast && (

@@ -2,6 +2,13 @@ export interface AuthResponse {
   token: string;
 }
 
+export type UserMe = {
+  name?: string;
+  email?: string;
+  telegramChatId?: string | number;
+  telegramId?: string | number;
+};
+
 export interface Entry {
   id: string;
   description: string;

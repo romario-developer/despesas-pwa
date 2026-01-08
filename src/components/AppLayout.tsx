@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { clearToken } from "../api/client";
+import { NavLink, Outlet } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import { updateSW } from "../main";
 
 const linkClasses = ({ isActive }: { isActive: boolean }) =>
@@ -10,7 +10,7 @@ const linkClasses = ({ isActive }: { isActive: boolean }) =>
   ].join(" ");
 
 const AppLayout = () => {
-  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [showUpdate, setShowUpdate] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -20,9 +20,16 @@ const AppLayout = () => {
     return () => window.removeEventListener("pwa:need-refresh", handler);
   }, []);
 
+  const userLabel = () => {
+    const name = user?.name?.trim();
+    const email = user?.email?.trim();
+    if (name) return `Ola, ${name}`;
+    if (email) return email;
+    return "Conta";
+  };
+
   const handleLogout = () => {
-    clearToken();
-    navigate("/login", { replace: true });
+    logout();
   };
 
   const handleUpdate = async () => {
@@ -38,7 +45,12 @@ const AppLayout = () => {
     <div className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="text-lg font-semibold text-primary">Despesas</div>
+          <div className="flex items-center gap-3">
+            <div className="text-lg font-semibold text-primary">Despesas</div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {userLabel()}
+            </span>
+          </div>
           <nav className="flex items-center gap-4">
             <NavLink to="/" end className={linkClasses}>
               Dashboard

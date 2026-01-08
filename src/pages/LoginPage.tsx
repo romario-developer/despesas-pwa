@@ -1,25 +1,25 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
-import { getStoredToken, saveToken } from "../api/client";
+import { clearAppStorage, consumeLoginMessage, getStoredToken, saveToken } from "../api/client";
+import { useAuth } from "../contexts/AuthContext";
 import { apiBaseURL } from "../services/api";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { refreshMe } = useAuth();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const from = (location.state as { from?: string } | null)?.from || "/";
+  const [notice] = useState<string | null>(() => consumeLoginMessage());
 
   useEffect(() => {
     const existingToken = getStoredToken();
     if (existingToken) {
-      navigate(from, { replace: true });
+      navigate("/", { replace: true });
     }
-  }, [from, navigate]);
+  }, [navigate]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,6 +31,7 @@ const LoginPage = () => {
     setError(null);
     setIsLoading(true);
     try {
+      clearAppStorage();
       if (import.meta.env.DEV) {
         console.log("[login] baseURL:", apiBaseURL);
         console.log("[login] endpoint:", "/api/auth/login");
@@ -39,10 +40,15 @@ const LoginPage = () => {
 
       const response = await login(password);
       saveToken(response.token);
-      navigate(from, { replace: true });
+      await refreshMe();
+      navigate("/", { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao fazer login.";
-      setError(message);
+      const friendly =
+        message === "Network Error"
+          ? "API indisponivel. Verifique sua conexao."
+          : message;
+      setError(friendly);
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +60,11 @@ const LoginPage = () => {
         <h1 className="mb-6 text-center text-2xl font-semibold text-slate-900">
           Despesas
         </h1>
+        {notice && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {notice}
+          </p>
+        )}
         <form className="space-y-4" noValidate onSubmit={handleSubmit}>
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-700">Senha</span>
