@@ -1,3 +1,4 @@
+import { AxiosHeaders } from "axios";
 import type { AxiosError, AxiosRequestConfig } from "axios";
 import { api, apiBaseURL, apiHadApiSuffix, shouldLogApi } from "../services/api";
 
@@ -142,10 +143,9 @@ api.interceptors.request.use((config) => {
 
   const token = getStoredToken();
   if (token) {
-    config.headers = {
-      ...(config.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-    };
+    const headers = AxiosHeaders.from(config.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    config.headers = headers;
   }
 
   if (shouldLogApi) {
