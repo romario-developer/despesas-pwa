@@ -29,7 +29,7 @@ const getMonthKey = (value: string | Date) => {
 type ToastState = { message: string; type: "success" | "error" } | null;
 
 const PlanningPage = () => {
-  const { user, status: authStatus } = useAuth();
+  const { user, status: authStatus, refreshMe } = useAuth();
   const [month, setMonth] = useState(currentMonth());
   const [planning, setPlanning] = useState<Planning>({
     salaryByMonth: {},
@@ -62,6 +62,7 @@ const PlanningPage = () => {
   const [toast, setToast] = useState<ToastState>(null);
   const [telegramLink, setTelegramLink] = useState<TelegramLinkCodeResponse | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
 
   const monthKey = useMemo(() => getMonthKey(month), [month]);
   const telegramId = user?.telegramChatId ?? user?.telegramId;
@@ -95,6 +96,10 @@ const PlanningPage = () => {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    refreshMe();
+  }, [refreshMe]);
 
   useEffect(() => {
     const value = planning.salaryByMonth?.[monthKey] ?? 0;
@@ -383,6 +388,16 @@ const PlanningPage = () => {
     }
   };
 
+  const handleRefreshStatus = async () => {
+    if (isRefreshingStatus) return;
+    setIsRefreshingStatus(true);
+    try {
+      await refreshMe();
+    } finally {
+      setIsRefreshingStatus(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="card p-4 text-sm text-slate-600">Carregando planejamento...</div>;
   }
@@ -656,6 +671,14 @@ const PlanningPage = () => {
             >
               Status: {telegramStatusLabel}
             </span>
+            <button
+              type="button"
+              onClick={handleRefreshStatus}
+              disabled={isRefreshingStatus || authStatus === "loading"}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isRefreshingStatus ? "Recarregando..." : "Recarregar status"}
+            </button>
             <button
               type="button"
               onClick={handleGenerateTelegramCode}
