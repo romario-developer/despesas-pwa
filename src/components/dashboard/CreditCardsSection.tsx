@@ -58,6 +58,27 @@ const normalizeDay = (value: string) => {
   return Math.trunc(num);
 };
 
+const buildApiErrorMessage = (err: unknown) => {
+  if (!(err instanceof Error)) return "Erro inesperado.";
+  const apiError = err as Error & { status?: number; payload?: unknown };
+  let detail = err.message || "Erro inesperado.";
+  const payload = apiError.payload;
+  if (typeof payload === "string") {
+    detail = payload;
+  } else if (payload && typeof payload === "object") {
+    const maybe = payload as { message?: unknown; error?: unknown };
+    if (typeof maybe.message === "string" && maybe.message.trim()) {
+      detail = maybe.message;
+    } else if (typeof maybe.error === "string" && maybe.error.trim()) {
+      detail = maybe.error;
+    }
+  }
+  if (apiError.status) {
+    return `Status ${apiError.status}: ${detail}`;
+  }
+  return detail;
+};
+
 const CreditCardsSection = () => {
   const [cards, setCards] = useState<CreditCard[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,11 +103,12 @@ const CreditCardsSection = () => {
       const data = await listCards();
       setCards(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro ao carregar cartoes.";
+      const message = buildApiErrorMessage(err);
       const status = (err as Error & { status?: number }).status;
+      const payload = (err as Error & { payload?: unknown }).payload;
       if (status) {
         // eslint-disable-next-line no-console
-        console.warn("[cards] erro ao carregar:", status);
+        console.warn("[cards] erro ao carregar:", status, payload);
       }
       setError(message);
       setCards([]);
@@ -163,17 +185,35 @@ const CreditCardsSection = () => {
 
     const limitText = formState.limit.trim();
     const limitValue = parseCurrencyInput(limitText);
-    if (!limitText || Number.isNaN(limitValue)) {
+    if (!limitText || Number.isNaN(limitValue) || limitValue < 0) {
       setFormError("Informe o limite do cartao.");
+      return;
+    }
+
+    const brand = formState.brand.trim();
+    if (!brand) {
+      setFormError("Informe a bandeira do cartao.");
+      return;
+    }
+
+    const closingDay = normalizeDay(formState.closingDay);
+    if (!closingDay) {
+      setFormError("Informe o dia de fechamento.");
+      return;
+    }
+
+    const dueDay = normalizeDay(formState.dueDay);
+    if (!dueDay) {
+      setFormError("Informe o dia de vencimento.");
       return;
     }
 
     const payload: CardPayload = {
       name,
-      brand: formState.brand.trim() || undefined,
+      brand,
       limit: limitValue,
-      closingDay: normalizeDay(formState.closingDay),
-      dueDay: normalizeDay(formState.dueDay),
+      closingDay,
+      dueDay,
       color: formState.color || undefined,
     };
 
@@ -190,8 +230,18 @@ const CreditCardsSection = () => {
       setDayPickerField(null);
       setEditingCard(null);
       await loadCards();
+      setToast({
+        message: editingCard ? "Cartao atualizado" : "Cartao criado",
+        type: "success",
+      });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro ao salvar cartao.";
+      const message = buildApiErrorMessage(err);
+      const status = (err as Error & { status?: number }).status;
+      const payload = (err as Error & { payload?: unknown }).payload;
+      if (status) {
+        // eslint-disable-next-line no-console
+        console.warn("[cards] erro ao salvar:", status, payload);
+      }
       setFormError(message);
       setToast({ message, type: "error" });
     } finally {
@@ -220,6 +270,17 @@ const CreditCardsSection = () => {
   const isFormStep = flowStep === "form";
   const canContinue = selectedMethod === "manual";
   const dayPickerValue = dayPickerField ? formState[dayPickerField] : "";
+  const limitValue = parseCurrencyInput(formState.limit);
+  const closingDayValue = normalizeDay(formState.closingDay);
+  const dueDayValue = normalizeDay(formState.dueDay);
+  const isSaveDisabled =
+    !formState.name.trim() ||
+    !formState.brand.trim() ||
+    !Number.isFinite(limitValue) ||
+    limitValue < 0 ||
+    !closingDayValue ||
+    !dueDayValue ||
+    isSaving;
 
   return (
     <div className="space-y-3">
@@ -524,7 +585,7 @@ const CreditCardsSection = () => {
                     type="button"
                     onClick={handleSubmit}
                     className="rounded-full bg-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-500 disabled:opacity-50"
-                    disabled={isSaving}
+                    disabled={isSaveDisabled}
                   >
                     {isSaving ? "Salvando..." : "Salvar"}
                   </button>

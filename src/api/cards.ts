@@ -25,6 +25,45 @@ type RawCard = {
   textColor?: unknown;
 } | null;
 
+const normalizeBrand = (value?: string) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  const upper = trimmed.toUpperCase();
+  const normalized = upper.replace(/\s+/g, "");
+  const map: Record<string, string> = {
+    VISA: "VISA",
+    MASTERCARD: "MASTERCARD",
+    "MASTER CARD": "MASTERCARD",
+    MASTER: "MASTERCARD",
+    ELO: "ELO",
+    AMEX: "AMEX",
+    "AMERICAN EXPRESS": "AMEX",
+    AMERICANEXPRESS: "AMEX",
+    OTHER: "OTHER",
+  };
+  return map[upper] ?? map[normalized] ?? normalized;
+};
+
+const normalizePayload = (payload: CardPayload): CardPayload => {
+  const name = payload.name.trim();
+  const limit = Number(payload.limit);
+  const limitValue = Number.isFinite(limit) ? limit : 0;
+  const closingDay = Number(payload.closingDay);
+  const closingDayValue = Number.isFinite(closingDay) ? closingDay : undefined;
+  const dueDay = Number(payload.dueDay);
+  const dueDayValue = Number.isFinite(dueDay) ? dueDay : undefined;
+  const color = payload.color?.trim();
+
+  return {
+    name,
+    brand: normalizeBrand(payload.brand),
+    limit: limitValue,
+    closingDay: closingDayValue,
+    dueDay: dueDayValue,
+    color: color || undefined,
+  };
+};
+
 const normalizeNumber = (value: unknown) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : undefined;
@@ -84,7 +123,10 @@ export const createCard = async (payload: CardPayload): Promise<CreditCard | nul
   const data = await apiRequest<RawCard>({
     url: "/api/cards",
     method: "POST",
-    data: payload,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: normalizePayload(payload),
   });
   return normalizeCard(data);
 };
@@ -96,7 +138,10 @@ export const updateCard = async (
   const data = await apiRequest<RawCard>({
     url: `/api/cards/${id}`,
     method: "PUT",
-    data: payload,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: normalizePayload(payload),
   });
   return normalizeCard(data);
 };

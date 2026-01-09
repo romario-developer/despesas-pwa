@@ -256,10 +256,13 @@ api.interceptors.response.use(
       console.warn("[api] error:", status ?? "no-status", fullUrl, payload);
     }
 
+    const responsePayload = error.response?.data;
+
     if (status === 401) {
       if (path === "/api/auth/login") {
         const authError = new Error("Credenciais invalidas.") as Error & { status?: number };
         authError.status = status;
+        (authError as Error & { payload?: unknown }).payload = responsePayload;
         return Promise.reject(authError);
       }
       logoutAndRedirect("Sessao expirada, faca login novamente.");
@@ -267,6 +270,7 @@ api.interceptors.response.use(
         status?: number;
       };
       authError.status = status;
+      (authError as Error & { payload?: unknown }).payload = responsePayload;
       return Promise.reject(authError);
     }
 
@@ -280,6 +284,7 @@ api.interceptors.response.use(
         "Endpoint nao encontrado. Verifique VITE_API_URL e paths /api.",
       ) as Error & { status?: number };
       notFoundError.status = status;
+      (notFoundError as Error & { payload?: unknown }).payload = responsePayload;
       return Promise.reject(notFoundError);
     }
 
@@ -287,6 +292,7 @@ api.interceptors.response.use(
     if (typeof status === "number") {
       apiError.status = status;
     }
+    (apiError as Error & { payload?: unknown }).payload = responsePayload;
     return Promise.reject(apiError);
   },
 );

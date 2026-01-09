@@ -32,7 +32,8 @@ export const formatDate = (isoDate: string) => {
 };
 
 export const parseCurrencyInput = (input: string) => {
-  const normalized = input.replace(/\./g, "").replace(",", ".");
+  const sanitized = input.replace(/[^\d,.-]/g, "");
+  const normalized = sanitized.replace(/\./g, "").replace(",", ".");
   const value = Number(normalized);
   return Number.isFinite(value) ? value : NaN;
 };
