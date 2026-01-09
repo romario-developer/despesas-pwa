@@ -12,8 +12,21 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 export const formatCurrency = (value: number) => currencyFormatter.format(value);
 export const formatBRL = (value: number) => currencyFormatter.format(value);
 
+const extractDateParts = (value: string) => {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  return { year, month, day };
+};
+
 export const formatDate = (isoDate: string) => {
-  const parsed = new Date(isoDate);
+  const trimmed = isoDate.trim();
+  const parts = extractDateParts(trimmed);
+  if (parts) {
+    return `${parts.day}/${parts.month}`;
+  }
+
+  const parsed = new Date(trimmed);
   if (Number.isNaN(parsed.getTime())) return isoDate;
   return dateFormatter.format(parsed);
 };
