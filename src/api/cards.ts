@@ -7,6 +7,7 @@ export type CardPayload = {
   limit: number;
   closingDay?: number;
   dueDay?: number;
+  color?: string;
 };
 
 type RawCard = {
@@ -20,6 +21,8 @@ type RawCard = {
   closingDate?: unknown;
   dueDay?: unknown;
   dueDate?: unknown;
+  color?: unknown;
+  textColor?: unknown;
 } | null;
 
 const normalizeNumber = (value: unknown) => {
@@ -51,6 +54,9 @@ const normalizeCard = (value: RawCard): CreditCard | null => {
   const limit = typeof limitValue === "number" ? limitValue : 0;
   const closingDay = normalizeDay(data.closingDay ?? data.closingDate);
   const dueDay = normalizeDay(data.dueDay ?? data.dueDate);
+  const color = typeof data.color === "string" ? data.color.trim() : undefined;
+  const textColor =
+    typeof data.textColor === "string" ? data.textColor.trim() : undefined;
 
   return {
     id: String(id),
@@ -59,6 +65,8 @@ const normalizeCard = (value: RawCard): CreditCard | null => {
     limit,
     closingDay,
     dueDay,
+    color: color || undefined,
+    textColor: textColor || undefined,
   };
 };
 

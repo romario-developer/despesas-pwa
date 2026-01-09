@@ -7,6 +7,7 @@ import {
   type CardPayload,
 } from "../../api/cards";
 import { formatBRL, parseCurrencyInput } from "../../utils/format";
+import { getReadableTextColor } from "../../utils/colors";
 import { cardBase, cardHover, subtleText } from "../../styles/dashboardTokens";
 import ConfirmDialog from "../ConfirmDialog";
 import DayPickerSheet from "../DayPickerSheet";
@@ -18,11 +19,25 @@ type CardFormState = {
   limit: string;
   closingDay: string;
   dueDay: string;
+  color: string;
 };
 
 type FlowStep = "closed" | "method" | "form";
 type MethodOption = "manual" | null;
 type DayField = "closingDay" | "dueDay" | null;
+
+const CARD_COLORS = [
+  "#6d28d9",
+  "#7c3aed",
+  "#8b5cf6",
+  "#a855f7",
+  "#ec4899",
+  "#f97316",
+  "#10b981",
+  "#0ea5e9",
+  "#22c55e",
+  "#f59e0b",
+];
 
 const emptyForm: CardFormState = {
   name: "",
@@ -30,6 +45,7 @@ const emptyForm: CardFormState = {
   limit: "",
   closingDay: "",
   dueDay: "",
+  color: CARD_COLORS[0],
 };
 
 const BRAND_OPTIONS = ["Visa", "MasterCard", "Elo", "Amex", "Other"];
@@ -90,6 +106,7 @@ const CreditCardsSection = () => {
       limit: card.limit ? String(card.limit) : "",
       closingDay: card.closingDay ? String(card.closingDay) : "",
       dueDay: card.dueDay ? String(card.dueDay) : "",
+      color: card.color ?? CARD_COLORS[0],
     });
     setFormError(null);
     setSelectedMethod("manual");
@@ -146,6 +163,7 @@ const CreditCardsSection = () => {
       limit: limitValue,
       closingDay: normalizeDay(formState.closingDay),
       dueDay: normalizeDay(formState.dueDay),
+      color: formState.color || undefined,
     };
 
     setIsSaving(true);
@@ -224,46 +242,64 @@ const CreditCardsSection = () => {
         <div className={`${cardBase} ${subtleText}`}>Carregando cartoes...</div>
       ) : cardsList.length ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {cardsList.map((card) => (
-            <div key={card.id} className={`${cardBase} ${cardHover} space-y-3`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h4 className="text-base font-semibold text-slate-900">{card.name}</h4>
-                  {card.brand && (
-                    <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
-                      {card.brand}
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(card)}
-                    className="text-primary hover:underline"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCardToDelete(card)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </div>
+          {cardsList.map((card) => {
+            const cardBackground = card.color ?? "#ffffff";
+            const cardTextColor =
+              card.textColor ?? getReadableTextColor(cardBackground);
+            const isLightText =
+              cardTextColor.toLowerCase() === "#ffffff" ||
+              cardTextColor.toLowerCase() === "#fff";
+            const badgeClass = isLightText
+              ? "border-white/40 bg-white/20"
+              : "border-black/20 bg-black/10";
 
-              <div className="text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">{formatBRL(card.limit)}</p>
-                <p>
-                  Fechamento: dia {card.closingDay ?? "-"}
-                </p>
-                <p>
-                  Vencimento: dia {card.dueDay ?? "-"}
-                </p>
+            return (
+              <div
+                key={card.id}
+                className={`${cardBase} ${cardHover} space-y-3`}
+                style={{ backgroundColor: cardBackground, color: cardTextColor }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="text-base font-semibold text-current">
+                      {card.name}
+                    </h4>
+                    {card.brand && (
+                      <span
+                        className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase text-current ${badgeClass}`}
+                      >
+                        {card.brand}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(card)}
+                      className="text-current opacity-80 transition hover:opacity-100"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCardToDelete(card)}
+                      className="text-current opacity-70 transition hover:opacity-100"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-sm text-current opacity-90">
+                  <p className="font-semibold text-current opacity-100">
+                    {formatBRL(card.limit)}
+                  </p>
+                  <p>Fechamento: dia {card.closingDay ?? "-"}</p>
+                  <p>Vencimento: dia {card.dueDay ?? "-"}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className={`${cardBase} ${subtleText}`}>Nenhum cartao cadastrado.</div>
@@ -397,6 +433,30 @@ const CreditCardsSection = () => {
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-slate-200 sm:col-span-2">
+                    Cor do cartao
+                    <div className="flex flex-wrap gap-2">
+                      {CARD_COLORS.map((color) => {
+                        const isSelected = formState.color === color;
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() =>
+                              setFormState((prev) => ({ ...prev, color }))
+                            }
+                            className={`h-9 w-9 rounded-full border-2 transition ${
+                              isSelected
+                                ? "border-white ring-2 ring-purple-300"
+                                : "border-slate-800"
+                            }`}
+                            style={{ backgroundColor: color }}
+                            aria-label={`Selecionar cor ${color}`}
+                          />
+                        );
+                      })}
+                    </div>
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-slate-200 sm:col-span-2">
                     Conta

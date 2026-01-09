@@ -81,6 +81,8 @@ export type CreditCard = {
   limit: number;
   closingDay?: number;
   dueDay?: number;
+  color?: string;
+  textColor?: string;
 };
 
 export type PlanningExtra = {
