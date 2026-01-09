@@ -4,13 +4,21 @@ import {
   getTelegramStatus,
   type TelegramLinkCodeResponse,
 } from "../api/telegram";
-import MonthPicker from "../components/MonthPicker";
+import MonthPicker, {
+  MonthPickerFieldTrigger,
+  monthPickerFieldButtonClassName,
+} from "../components/MonthPicker";
 import Toast from "../components/Toast";
 import { getPlanning, savePlanning } from "../api/planning";
 import { formatBRL, parseCurrencyInput } from "../utils/format";
+import {
+  formatMonthLabel,
+  getCurrentMonthInTimeZone,
+  getDefaultMonthRange,
+} from "../utils/months";
 import { DEFAULT_PLANNING, type Planning, type PlanningBill, type PlanningExtra } from "../types";
 
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const currentMonth = () => getCurrentMonthInTimeZone("America/Bahia");
 
 const createId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -32,7 +40,12 @@ const getMonthKey = (value: string | Date) => {
 type ToastState = { message: string; type: "success" | "error" } | null;
 
 const PlanningPage = () => {
-  const [month, setMonth] = useState(currentMonth());
+  const currentMonthValue = useMemo(() => currentMonth(), []);
+  const monthRange = useMemo(
+    () => getDefaultMonthRange({ endMonth: currentMonthValue, monthsBack: 24 }),
+    [currentMonthValue],
+  );
+  const [month, setMonth] = useState(currentMonthValue);
   const [planning, setPlanning] = useState<Planning>({
     salaryByMonth: {},
     extrasByMonth: {},
@@ -46,7 +59,7 @@ const PlanningPage = () => {
     description: string;
     amount: string;
   }>({
-    date: `${currentMonth()}-01`,
+    date: `${currentMonthValue}-01`,
     description: "",
     amount: "",
   });
@@ -431,11 +444,17 @@ const PlanningPage = () => {
           </p>
         </div>
         <div className="sm:w-60">
-          <MonthPicker
-            label="Mes"
-            value={month}
-            onChange={(value) => setMonth(getMonthKey(value))}
-          />
+          <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+            Mes
+            <MonthPicker
+              valueMonth={month}
+              onChangeMonth={(value) => setMonth(getMonthKey(value))}
+              minMonth={monthRange.start}
+              maxMonth={monthRange.end}
+              buttonClassName={monthPickerFieldButtonClassName}
+              trigger={<MonthPickerFieldTrigger label={formatMonthLabel(month)} />}
+            />
+          </label>
         </div>
       </div>
 

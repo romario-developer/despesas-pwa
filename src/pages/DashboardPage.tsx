@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
 import Toast from "../components/Toast";
+import MonthPicker from "../components/MonthPicker";
 import DashboardSection from "../components/ui/DashboardSection";
 import QuickEntryCard from "../components/dashboard/QuickEntryCard";
 import CreditCardsSection from "../components/dashboard/CreditCardsSection";
@@ -10,26 +11,14 @@ import { getDashboardSummary } from "../api/dashboard";
 import { monthToRange } from "../utils/dateRange";
 import { formatBRL, formatDate } from "../utils/format";
 import { ENTRIES_CHANGED, notifyEntriesChanged } from "../utils/entriesEvents";
+import {
+  getCurrentMonthInTimeZone,
+  getDefaultMonthRange,
+  isMonthInRange,
+} from "../utils/months";
 import { cardBase, cardHover, subtleText } from "../styles/dashboardTokens";
 import { buildTag } from "../constants/build";
 import type { DashboardSummary, Entry } from "../types";
-
-const currentMonth = () => new Date().toISOString().slice(0, 7);
-
-const MONTH_NAMES = [
-  "Janeiro",
-  "Fevereiro",
-  "Marco",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
 
 const CATEGORY_FALLBACK_COLORS = [
   "#0ea5e9",
@@ -42,29 +31,23 @@ const CATEGORY_FALLBACK_COLORS = [
   "#3b82f6",
 ];
 
-const formatMonthLabel = (value: string) => {
-  const [year, month] = value.split("-");
-  const monthIndex = Number(month) - 1;
-  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) {
-    return value;
-  }
-  const label = MONTH_NAMES[monthIndex] ?? value;
-  return `${label} ${year}`.trim();
-};
-
-const shiftMonth = (value: string, delta: number) => {
-  const [yearStr, monthStr] = value.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  if (!Number.isFinite(year) || !Number.isFinite(month)) return value;
-  const next = new Date(year, month - 1 + delta, 1);
-  const nextMonth = String(next.getMonth() + 1).padStart(2, "0");
-  return `${next.getFullYear()}-${nextMonth}`;
-};
-
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const [month, setMonth] = useState(currentMonth());
+  const currentMonth = useMemo(
+    () => getCurrentMonthInTimeZone("America/Bahia"),
+    [],
+  );
+  const monthRange = useMemo(
+    () => getDefaultMonthRange({ endMonth: currentMonth, monthsBack: 24 }),
+    [currentMonth],
+  );
+  const [month, setMonth] = useState(() => {
+    if (typeof window === "undefined") return currentMonth;
+    const stored = localStorage.getItem("selectedMonth");
+    return stored && isMonthInRange(stored, monthRange.start, monthRange.end)
+      ? stored
+      : currentMonth;
+  });
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -142,6 +125,11 @@ const DashboardPage = () => {
   }, [loadDashboard]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("selectedMonth", month);
+  }, [month]);
+
+  useEffect(() => {
     const refresh = () => loadDashboard({ silent: true });
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -175,8 +163,6 @@ const DashboardPage = () => {
     }
   }, [buildVersion, showBuildTag]);
 
-  const monthLabel = useMemo(() => formatMonthLabel(month), [month]);
-
   const categoryData = useMemo(() => {
     const list = Array.isArray(summary?.byCategory) ? summary?.byCategory : [];
     return list
@@ -193,9 +179,6 @@ const DashboardPage = () => {
   const expenseTotal = summary?.expenseTotal ?? 0;
   const renderSummaryValue = (value: number) => (summary ? formatBRL(value) : "--");
 
-  const handlePrevMonth = () => setMonth((prev) => shiftMonth(prev, -1));
-  const handleNextMonth = () => setMonth((prev) => shiftMonth(prev, 1));
-
   return (
     <div className="space-y-4">
       <div className="rounded-3xl bg-gradient-to-br from-white via-slate-50 to-teal-50/40 p-4 sm:p-6">
@@ -203,35 +186,13 @@ const DashboardPage = () => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase text-slate-500">Mes</p>
-              <div className="mt-1 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrevMonth}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-teal-300 hover:text-teal-700"
-                  aria-label="Mes anterior"
-                >
-                  &lt;
-                </button>
-                <div className="relative">
-                  <span className="text-2xl font-semibold text-slate-900">
-                    {monthLabel}
-                  </span>
-                  <input
-                    type="month"
-                    value={month}
-                    onChange={(event) => setMonth(event.target.value)}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label="Selecionar mes"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleNextMonth}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-teal-300 hover:text-teal-700"
-                  aria-label="Proximo mes"
-                >
-                  &gt;
-                </button>
+              <div className="mt-1">
+                <MonthPicker
+                  valueMonth={month}
+                  onChangeMonth={setMonth}
+                  minMonth={monthRange.start}
+                  maxMonth={monthRange.end}
+                />
               </div>
             </div>
             <div className="text-sm text-slate-600">

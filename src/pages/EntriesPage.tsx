@@ -2,20 +2,33 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { listCategories } from "../api/categories";
 import { deleteEntry, listEntries } from "../api/entries";
-import MonthPicker from "../components/MonthPicker";
+import MonthPicker, {
+  MonthPickerFieldTrigger,
+  monthPickerFieldButtonClassName,
+} from "../components/MonthPicker";
 import ConfirmDialog from "../components/ConfirmDialog";
 import Toast from "../components/Toast";
 import { monthToRange } from "../utils/dateRange";
 import { ENTRIES_CHANGED, notifyEntriesChanged } from "../utils/entriesEvents";
 import { formatCurrency, formatDate } from "../utils/format";
+import {
+  formatMonthLabel,
+  getCurrentMonthInTimeZone,
+  getDefaultMonthRange,
+} from "../utils/months";
 import type { Entry } from "../types";
 
-const currentMonth = () => new Date().toISOString().slice(0, 7);
+const currentMonth = () => getCurrentMonthInTimeZone("America/Bahia");
 
 const EntriesPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [month, setMonth] = useState(currentMonth());
+  const currentMonthValue = useMemo(() => currentMonth(), []);
+  const monthRange = useMemo(
+    () => getDefaultMonthRange({ endMonth: currentMonthValue, monthsBack: 24 }),
+    [currentMonthValue],
+  );
+  const [month, setMonth] = useState(currentMonthValue);
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [categories, setCategories] = useState<unknown>([]);
@@ -171,7 +184,17 @@ const EntriesPage = () => {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <MonthPicker label="Mes" value={month} onChange={setMonth} />
+        <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+          Mes
+          <MonthPicker
+            valueMonth={month}
+            onChangeMonth={setMonth}
+            minMonth={monthRange.start}
+            maxMonth={monthRange.end}
+            buttonClassName={monthPickerFieldButtonClassName}
+            trigger={<MonthPickerFieldTrigger label={formatMonthLabel(month)} />}
+          />
+        </label>
 
         <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
           Categoria
