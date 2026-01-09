@@ -250,14 +250,15 @@ const DashboardPage = () => {
             </div>
           )}
 
-          <div className={`${cardBase} ${cardHover} space-y-1`}>
-            <p className="text-xs font-semibold uppercase text-slate-500">Saldo em conta</p>
-            <p className="text-3xl font-semibold text-slate-900">
-              {renderSummaryValue(balance)}
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <div className={`${cardBase} ${cardHover} col-span-2 space-y-1 md:col-span-1`}>
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Saldo em conta
+              </p>
+              <p className="text-3xl font-semibold text-slate-900">
+                {renderSummaryValue(balance)}
+              </p>
+            </div>
             <div className={`${cardBase} ${cardHover} space-y-1`}>
               <p className="text-xs font-semibold uppercase text-slate-500">Receitas</p>
               <p className="text-2xl font-semibold text-emerald-700">
