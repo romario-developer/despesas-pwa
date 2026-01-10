@@ -82,12 +82,12 @@ export interface EntryPayload {
 }
 
 export type PaymentMethod =
-  | "Dinheiro"
-  | "Debito"
-  | "Credito"
-  | "Pix"
-  | "Transferencia"
-  | "Outro";
+  | "PIX"
+  | "CASH"
+  | "DEBIT"
+  | "CREDIT"
+  | "TRANSFER"
+  | "OTHER";
 
 export type CreditCard = {
   id: string;

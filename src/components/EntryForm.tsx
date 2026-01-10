@@ -24,10 +24,10 @@ const normalizeAmount = (value: string) => {
 
 const resolveEntryPaymentMethod = (entry?: Partial<Entry>): PaymentMethod => {
   if (entry?.paymentMethod) {
-    return mapToPaymentMethod(entry.paymentMethod) ?? "Dinheiro";
+    return mapToPaymentMethod(entry.paymentMethod) ?? "CASH";
   }
-  if (entry?.cardId) return "Credito";
-  return "Dinheiro";
+  if (entry?.cardId) return "CREDIT";
+  return "CASH";
 };
 
 const formatCardLabel = (card: CreditCard) =>
@@ -65,7 +65,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
     const nextPayment = resolveEntryPaymentMethod(initialValues);
     const nextCardId = initialValues?.cardId ?? "";
     setPaymentMethod(nextPayment);
-    setCardId(nextPayment === "Credito" ? nextCardId : "");
+    setCardId(nextPayment === "CREDIT" ? nextCardId : "");
   }, [initialValues]);
 
   useEffect(() => {
