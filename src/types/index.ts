@@ -97,6 +97,19 @@ export type CreditCard = {
   textColor?: string;
 };
 
+export type CardInvoice = {
+  cardId: string;
+  cardName: string;
+  brand?: string;
+  color?: string;
+  textColor?: string;
+  invoiceTotal: number;
+  closingDay?: number;
+  dueDay?: number;
+  cycleStart?: string;
+  cycleEnd?: string;
+};
+
 export type PlanningExtra = {
   id: string;
   label?: string;

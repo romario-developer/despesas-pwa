@@ -1,6 +1,6 @@
 import { apiRequest, getStoredToken } from "./client";
 import { api } from "../services/api";
-import type { CreditCard } from "../types";
+import type { CardInvoice, CreditCard } from "../types";
 
 export type CardPayload = {
   name: string;
@@ -162,6 +162,103 @@ export const listCards = async (): Promise<ListCardsResult> => {
     status: response.status,
     rawLength: list.length,
   };
+};
+
+type RawInvoice = {
+  id?: unknown;
+  cardId?: unknown;
+  card?: unknown;
+  cardName?: unknown;
+  name?: unknown;
+  brand?: unknown;
+  color?: unknown;
+  textColor?: unknown;
+  invoiceTotal?: unknown;
+  total?: unknown;
+  closingDay?: unknown;
+  dueDay?: unknown;
+  cycleStart?: unknown;
+  cycleEnd?: unknown;
+} | null;
+
+type ListCardInvoicesResponse =
+  | RawInvoice[]
+  | {
+      invoices?: RawInvoice[];
+      data?: RawInvoice[];
+      items?: RawInvoice[];
+    }
+  | null;
+
+const resolveInvoiceList = (payload: ListCardInvoicesResponse): RawInvoice[] => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload && typeof payload === "object") {
+    if (Array.isArray(payload.invoices)) {
+      return payload.invoices;
+    }
+    if (Array.isArray(payload.data)) {
+      return payload.data;
+    }
+    if (Array.isArray(payload.items)) {
+      return payload.items;
+    }
+  }
+  return [];
+};
+
+const normalizeInvoice = (value: RawInvoice): CardInvoice | null => {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  const id =
+    typeof data.cardId === "string"
+      ? data.cardId
+      : typeof data.id === "string"
+        ? data.id
+        : typeof data.card === "string"
+          ? data.card
+          : undefined;
+  if (!id) return null;
+  const cardName =
+    typeof data.cardName === "string"
+      ? data.cardName.trim()
+      : typeof data.name === "string"
+        ? data.name.trim()
+        : undefined;
+  if (!cardName) return null;
+  const brand = typeof data.brand === "string" ? data.brand.trim() : undefined;
+  const color = typeof data.color === "string" ? data.color.trim() : undefined;
+  const textColor = typeof data.textColor === "string" ? data.textColor.trim() : undefined;
+  const invoiceTotal = normalizeNumber(data.invoiceTotal ?? data.total ?? data.amount ?? 0) ?? 0;
+  const closingDay = normalizeDay(data.closingDay);
+  const dueDay = normalizeDay(data.dueDay);
+  const cycleStart = typeof data.cycleStart === "string" ? data.cycleStart : undefined;
+  const cycleEnd = typeof data.cycleEnd === "string" ? data.cycleEnd : undefined;
+
+  return {
+    cardId: String(id),
+    cardName,
+    brand,
+    color: color || undefined,
+    textColor: textColor || undefined,
+    invoiceTotal,
+    closingDay,
+    dueDay,
+    cycleStart,
+    cycleEnd,
+  };
+};
+
+export const listCardInvoices = async (): Promise<CardInvoice[]> => {
+  const response = await api.request<ListCardInvoicesResponse>({
+    url: "/api/cards/invoices",
+    method: "GET",
+  });
+
+  const list = resolveInvoiceList(response.data);
+  const invoices = list.map((item) => normalizeInvoice(item)).filter(Boolean) as CardInvoice[];
+  return invoices;
 };
 
 export const createCard = async (payload: CardPayload): Promise<CreditCard | null> => {

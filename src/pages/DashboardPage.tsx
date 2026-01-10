@@ -7,9 +7,11 @@ import QuickEntryCard from "../components/dashboard/QuickEntryCard";
 import CreditCardsSection from "../components/dashboard/CreditCardsSection";
 import MonthChipsBar from "../components/MonthChipsBar";
 import { listEntries } from "../api/entries";
+import { listCardInvoices } from "../api/cards";
 import { getDashboardSummary } from "../api/dashboard";
 import { monthToRange } from "../utils/dateRange";
 import { formatBRL, formatDate } from "../utils/format";
+import { getReadableTextColor } from "../utils/colors";
 import { ENTRIES_CHANGED, notifyEntriesChanged } from "../utils/entriesEvents";
 import {
   buildMonthList,
@@ -20,7 +22,7 @@ import {
 } from "../utils/months";
 import { cardBase, cardHover, subtleText } from "../styles/dashboardTokens";
 import { buildTag } from "../constants/build";
-import type { DashboardSummary, Entry } from "../types";
+import type { CardInvoice, DashboardSummary, Entry } from "../types";
 
 const CATEGORY_FALLBACK_COLORS = [
   "#0ea5e9",
@@ -58,6 +60,9 @@ const DashboardPage = () => {
   const [entriesCount, setEntriesCount] = useState(0);
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesError, setEntriesError] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<CardInvoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(
     null,
   );
@@ -124,9 +129,29 @@ const DashboardPage = () => {
     [month],
   );
 
+  const loadInvoices = useCallback(async () => {
+    setInvoicesLoading(true);
+    setInvoicesError(null);
+    try {
+      const data = await listCardInvoices();
+      setInvoices(data);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao carregar faturas.";
+      setInvoicesError(message);
+      setInvoices([]);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]);
+  }, [loadDashboard, loadInvoices]);
+
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -134,7 +159,10 @@ const DashboardPage = () => {
   }, [month]);
 
   useEffect(() => {
-    const refresh = () => loadDashboard({ silent: true });
+    const refresh = () => {
+      loadDashboard({ silent: true });
+      loadInvoices();
+    };
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         refresh();
@@ -271,6 +299,67 @@ const DashboardPage = () => {
                 {renderSummaryValue(expenseTotal)}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white/70 p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-base font-semibold text-slate-900">Faturas</h4>
+                <p className="text-xs text-slate-500">Total da fatura atual de cada cartao</p>
+              </div>
+              {invoicesError && (
+                <p className="text-xs font-semibold text-rose-600">{invoicesError}</p>
+              )}
+            </div>
+
+            {invoicesLoading ? (
+              <p className="mt-3 text-sm text-slate-500">Carregando faturas...</p>
+            ) : invoices.length ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {invoices.map((invoice) => {
+                  const cardLabel = invoice.brand
+                    ? `${invoice.cardName} • ${invoice.brand}`
+                    : invoice.cardName;
+                  const background = invoice.color ?? "#0f172a";
+                  const textColor = getReadableTextColor(background);
+                  const cycleLabel =
+                    invoice.cycleStart && invoice.cycleEnd
+                      ? `${formatDate(invoice.cycleStart)} - ${formatDate(invoice.cycleEnd)}`
+                      : null;
+                  return (
+                    <div
+                      key={invoice.cardId}
+                      className="space-y-3 rounded-2xl border border-white/40 p-4 shadow-sm"
+                      style={{ backgroundColor: background, color: textColor }}
+                    >
+                      <div className="flex items-center justify-between text-sm font-semibold">
+                        <p>{cardLabel}</p>
+                        <span className="text-[11px] uppercase tracking-wider text-current opacity-80">
+                          Fatura
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-current/70">
+                          Fatura atual
+                        </p>
+                        <p className="text-2xl font-semibold text-current">
+                          {formatBRL(invoice.invoiceTotal)}
+                        </p>
+                      </div>
+                      <div className="text-sm text-current/80">
+                        <p>Fecha dia {invoice.closingDay ?? "-"}</p>
+                        <p>Vence dia {invoice.dueDay ?? "-"}</p>
+                        {cycleLabel && <p>Ciclo: {cycleLabel}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">
+                {invoicesError ? invoicesError : "Nenhuma fatura encontrada."}
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
