@@ -153,7 +153,6 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
       source,
       paymentMethod,
       cardId: isPaymentMethodCredit(paymentMethod) && cardId ? cardId : null,
-      amount: parsedAmount,
     };
   };
 
