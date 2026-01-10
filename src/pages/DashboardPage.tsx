@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
 import Toast from "../components/Toast";
@@ -7,12 +7,9 @@ import QuickEntryCard from "../components/dashboard/QuickEntryCard";
 import CreditCardsSection from "../components/dashboard/CreditCardsSection";
 import MonthChipsBar from "../components/MonthChipsBar";
 import { listEntries } from "../api/entries";
-import { payCardInvoice } from "../api/cards";
 import { getDashboardSummary } from "../api/dashboard";
 import { monthToRange } from "../utils/dateRange";
 import { formatBRL, formatDate } from "../utils/format";
-import { getReadableTextColor } from "../utils/colors";
-import { parseCurrencyInput } from "../utils/format";
 import { ENTRIES_CHANGED, notifyEntriesChanged } from "../utils/entriesEvents";
 import {
   buildMonthList,
@@ -23,8 +20,7 @@ import {
 } from "../utils/months";
 import { cardBase, cardHover, subtleText } from "../styles/dashboardTokens";
 import { buildTag } from "../constants/build";
-import type { CardInvoice, DashboardSummary, Entry } from "../types";
-import { api } from "../services/api";
+import type { DashboardSummary, Entry } from "../types";
 
 const CATEGORY_FALLBACK_COLORS = [
   "#0ea5e9",
@@ -36,11 +32,6 @@ const CATEGORY_FALLBACK_COLORS = [
   "#eab308",
   "#3b82f6",
 ];
-
-type CardInvoicesApiResponse = {
-  asOf?: string;
-  invoices?: CardInvoice[];
-};
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -67,15 +58,6 @@ const DashboardPage = () => {
   const [entriesCount, setEntriesCount] = useState(0);
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesError, setEntriesError] = useState<string | null>(null);
-  const [invoices, setInvoices] = useState<CardInvoice[]>([]);
-  const [invoicesLoading, setInvoicesLoading] = useState(false);
-  const [invoicesError, setInvoicesError] = useState<string | null>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<CardInvoice | null>(null);
-  const [paymentValue, setPaymentValue] = useState("");
-  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [isPaying, setIsPaying] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const invoicesFetchedRef = useRef(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(
     null,
   );
@@ -142,81 +124,9 @@ const DashboardPage = () => {
     [month],
   );
 
-  const loadInvoices = useCallback(async () => {
-    setInvoicesLoading(true);
-    setInvoicesError(null);
-    try {
-      const response = await api.request<CardInvoicesApiResponse>({
-        url: "/api/cards/invoices",
-        method: "GET",
-      });
-
-      const invoicesPayload = response.data?.invoices;
-      const invoiceList = Array.isArray(invoicesPayload) ? invoicesPayload : [];
-
-      setInvoices(invoiceList);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Erro ao carregar faturas.";
-      setInvoicesError(message);
-      setInvoices([]);
-    } finally {
-      setInvoicesLoading(false);
-    }
-  }, []);
-
-  const formatInputValue = (value: number) => {
-    return value.toFixed(2).replace(".", ",");
-  };
-
-  const openPaymentDialog = (invoice: CardInvoice) => {
-    setSelectedInvoice(invoice);
-    setPaymentValue(formatInputValue(invoice.invoiceTotal));
-    setPaymentDate(new Date().toISOString().slice(0, 10));
-    setPaymentError(null);
-  };
-
-  const closePaymentDialog = () => {
-    setSelectedInvoice(null);
-    setPaymentValue("");
-    setPaymentError(null);
-  };
-
-  const handlePaymentConfirm = async () => {
-    if (!selectedInvoice) return;
-    const amount = parseCurrencyInput(paymentValue);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setPaymentError("Informe um valor valido.");
-      return;
-    }
-    setPaymentError(null);
-    setIsPaying(true);
-    try {
-      await payCardInvoice({
-        cardId: selectedInvoice.cardId,
-        amount,
-        paymentDate,
-      });
-      setToast({ message: "Fatura paga com sucesso", type: "success" });
-      closePaymentDialog();
-      await loadInvoices();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro ao registrar pagamento.";
-      setPaymentError(message);
-    } finally {
-      setIsPaying(false);
-    }
-  };
-
   useEffect(() => {
     loadDashboard();
-  }, [loadDashboard, loadInvoices]);
-
-  useEffect(() => {
-    if (invoicesFetchedRef.current) return;
-    invoicesFetchedRef.current = true;
-    loadInvoices();
-  }, [loadInvoices]);
+  }, [loadDashboard]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -226,7 +136,6 @@ const DashboardPage = () => {
   useEffect(() => {
     const refresh = () => {
       loadDashboard({ silent: true });
-      loadInvoices();
     };
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -247,7 +156,7 @@ const DashboardPage = () => {
       window.removeEventListener(ENTRIES_CHANGED, refresh);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [loadDashboard, loadInvoices]);
+  }, [loadDashboard]);
 
   useEffect(() => {
     const isLocalHost =
@@ -281,8 +190,6 @@ const DashboardPage = () => {
   const incomeTotal = summary?.incomeTotal ?? 0;
   const expenseTotal = summary?.expenseTotal ?? 0;
   const renderSummaryValue = (value: number) => (summary ? formatBRL(value) : "--");
-  const invoiceCount = Array.isArray(invoices) ? invoices.length : 0;
-
   const handleMonthToggle = () => {
     setIsMonthPanelOpen((prev) => !prev);
   };
@@ -367,77 +274,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white/70 p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-base font-semibold text-slate-900">Faturas</h4>
-                <p className="text-xs text-slate-500">Total da fatura atual de cada cartao</p>
-                <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  FATURAS CARREGADAS: {invoiceCount}
-                </p>
-              </div>
-              {invoicesError && (
-                <p className="text-xs font-semibold text-rose-600">{invoicesError}</p>
-              )}
-            </div>
-
-            {invoicesLoading ? (
-              <p className="mt-3 text-sm text-slate-500">Carregando faturas...</p>
-            ) : invoiceCount ? (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {invoices.map((invoice) => {
-                    const cardLabel = invoice.brand
-                      ? `${invoice.name} · ${invoice.brand}`
-                      : invoice.name;
-                    const background = invoice.color ?? "#0f172a";
-                    const textColor = getReadableTextColor(background);
-                    const cycleLabel =
-                      invoice.cycleStart && invoice.cycleEnd
-                        ? `${formatDate(invoice.cycleStart)} - ${formatDate(invoice.cycleEnd)}`
-                        : null;
-                    return (
-                      <div
-                      key={invoice.cardId}
-                      className="space-y-3 rounded-2xl border border-white/40 p-4 shadow-sm"
-                      style={{ backgroundColor: background, color: textColor }}
-                    >
-                      <div className="flex items-center justify-between text-sm font-semibold">
-                        <p>{cardLabel}</p>
-                        <span className="text-[11px] uppercase tracking-wider text-current opacity-80">
-                          Fatura
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-current/70">
-                          Fatura atual
-                        </p>
-                        <p className="text-2xl font-semibold text-current">
-                          {formatBRL(invoice.invoiceTotal)}
-                        </p>
-                      </div>
-                      <div className="text-sm text-current/80">
-                        <p>Fecha dia {invoice.closingDay ?? "-"}</p>
-                        <p>Vence dia {invoice.dueDay ?? "-"}</p>
-                        {cycleLabel && <p>Ciclo: {cycleLabel}</p>}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => openPaymentDialog(invoice)}
-                        disabled={invoice.invoiceTotal <= 0}
-                        className="w-full rounded-full border border-white/40 bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/30 disabled:border-white/20 disabled:text-white/40"
-                      >
-                        Registrar pagamento
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">
-                {invoicesError ? invoicesError : "Nenhuma fatura encontrada."}
-              </p>
-            )}
-          </div>
+          <CreditCardsSection />
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className={`${cardBase} ${cardHover} lg:col-span-2`}>
@@ -502,90 +339,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {selectedInvoice && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div
-                className="absolute inset-0 bg-slate-950/70"
-                onClick={closePaymentDialog}
-              />
-              <div
-                className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
-                onClick={(event) => event.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Registrar pagamento de fatura"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {selectedInvoice.brand ?? "Cartao"}
-                    </p>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {selectedInvoice.name}
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={closePaymentDialog}
-                    className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
-                    aria-label="Fechar"
-                  >
-                    <span aria-hidden="true">&times;</span>
-                  </button>
-                </div>
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700">
-                      Valor
-                      <input
-                        type="text"
-                        value={paymentValue}
-                        onChange={(event) => setPaymentValue(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
-                        placeholder="0,00"
-                      />
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700">
-                      Data de pagamento
-                      <input
-                        type="date"
-                        value={paymentDate}
-                        onChange={(event) => setPaymentDate(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
-                      />
-                    </label>
-                  </div>
-                  {paymentError && (
-                    <p className="text-sm text-rose-600">{paymentError}</p>
-                  )}
-                </div>
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={closePaymentDialog}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
-                    disabled={isPaying}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePaymentConfirm}
-                    disabled={isPaying}
-                    className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/80 disabled:opacity-60"
-                  >
-                    {isPaying ? "Registrando..." : "Confirmar pagamento"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           <QuickEntryCard onCreated={notifyEntriesChanged} />
-
-          <CreditCardsSection />
 
           <DashboardSection
             title={`Ultimos lancamentos${entriesCount ? ` (${entriesCount})` : ""}`}

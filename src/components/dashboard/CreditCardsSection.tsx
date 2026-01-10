@@ -2,17 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createCard,
   deleteCard,
+  listCardInvoices,
   listCards,
+  payCardInvoice,
   updateCard,
   type CardPayload,
 } from "../../api/cards";
 import { formatBRL, parseCurrencyInput } from "../../utils/format";
+import { formatDate } from "../../utils/format";
 import { getReadableTextColor } from "../../utils/colors";
 import { cardBase, cardHover, subtleText } from "../../styles/dashboardTokens";
 import Toast from "../Toast";
 import ConfirmDialog from "../ConfirmDialog";
 import DayPickerSheet from "../DayPickerSheet";
-import type { CreditCard } from "../../types";
+import type { CreditCard, CardInvoice } from "../../types";
 
 type CardFormState = {
   name: string;
@@ -84,6 +87,9 @@ const CreditCardsSection = () => {
   const createdRecentlyRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<CardInvoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [flowStep, setFlowStep] = useState<FlowStep>("closed");
   const [selectedMethod, setSelectedMethod] = useState<MethodOption>(null);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
@@ -96,6 +102,11 @@ const CreditCardsSection = () => {
   );
   const [cardToDelete, setCardToDelete] = useState<CreditCard | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<CardInvoice | null>(null);
+  const [paymentValue, setPaymentValue] = useState("");
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const loadCards = useCallback(async () => {
     setIsLoading(true);
@@ -137,9 +148,29 @@ const CreditCardsSection = () => {
     }
   }, []);
 
+  const loadInvoices = useCallback(async () => {
+    setInvoicesLoading(true);
+    setInvoicesError(null);
+    try {
+      const data = await listCardInvoices();
+      setInvoices(data);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao carregar faturas.";
+      setInvoicesError(message);
+      setInvoices([]);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadCards();
   }, [loadCards]);
+
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
 
   const openCreate = () => {
     setEditingCard(null);
@@ -193,6 +224,8 @@ const CreditCardsSection = () => {
     setFormState((prev) => ({ ...prev, [dayPickerField]: value }));
     closeDayPicker();
   };
+
+  const formatInputValue = (value: number) => value.toFixed(2).replace(".", ",");
 
   const handleSubmit = async () => {
     if (isSaving) return;
@@ -284,7 +317,55 @@ const CreditCardsSection = () => {
     }
   };
 
+  const openPaymentDialog = (invoice: CardInvoice) => {
+    setSelectedInvoice(invoice);
+    setPaymentValue(formatInputValue(invoice.invoiceTotal));
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentError(null);
+  };
+
+  const closePaymentDialog = () => {
+    setSelectedInvoice(null);
+    setPaymentValue("");
+    setPaymentError(null);
+  };
+
+  const handlePaymentConfirm = async () => {
+    if (!selectedInvoice) return;
+    const amount = parseCurrencyInput(paymentValue);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentError("Informe um valor valido.");
+      return;
+    }
+    setPaymentError(null);
+    setIsPaying(true);
+    try {
+      await payCardInvoice({
+        cardId: selectedInvoice.cardId,
+        amount,
+        paymentDate,
+      });
+      setToast({ message: "Fatura paga com sucesso", type: "success" });
+      closePaymentDialog();
+      await loadInvoices();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao registrar pagamento.";
+      setPaymentError(message);
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   const cardsList = useMemo(() => cards, [cards]);
+  const invoiceByCardId = useMemo(() => {
+    const map: Record<string, CardInvoice> = {};
+    invoices.forEach((invoice) => {
+      if (invoice.cardId) {
+        map[invoice.cardId] = invoice;
+      }
+    });
+    return map;
+  }, [invoices]);
   const isFlowOpen = flowStep !== "closed";
   const isMethodStep = flowStep === "method";
   const isFormStep = flowStep === "form";
@@ -306,15 +387,15 @@ const CreditCardsSection = () => {
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">Cartoes de credito</h3>
-          <p className={subtleText}>Gerencie seus limites e datas.</p>
+          <h3 className="text-lg font-semibold text-slate-900">Cartões</h3>
+          <p className={subtleText}>Cartões e faturas atuais em um só lugar.</p>
         </div>
         <button
           type="button"
           onClick={openCreate}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90"
         >
-          Adicionar cartao
+          Adicionar cartão
         </button>
       </div>
 
@@ -324,8 +405,17 @@ const CreditCardsSection = () => {
         </div>
       )}
 
-      <div className="text-xs font-semibold text-slate-500">
-        Cards carregados: {cardsList.length}
+      {invoicesError && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {invoicesError}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500">
+        <span>Cards carregados: {cardsList.length}</span>
+        <span>
+          Faturas carregadas: {invoicesLoading ? "carregando..." : invoices.length}
+        </span>
       </div>
 
       {isLoading ? (
@@ -342,6 +432,12 @@ const CreditCardsSection = () => {
             const badgeClass = isLightText
               ? "border-white/40 bg-white/20"
               : "border-black/20 bg-black/10";
+            const invoice = invoiceByCardId[card.id];
+            const invoiceTotal = invoice?.invoiceTotal ?? 0;
+            const cycleLabel =
+              invoice?.cycleStart && invoice?.cycleEnd
+                ? `${formatDate(invoice.cycleStart)} - ${formatDate(invoice.cycleEnd)}`
+                : null;
 
             return (
               <div
@@ -380,12 +476,30 @@ const CreditCardsSection = () => {
                   </div>
                 </div>
 
-                <div className="text-sm text-current opacity-90">
+                <div className="text-sm text-current opacity-90 space-y-1">
                   <p className="font-semibold text-current opacity-100">
                     {formatBRL(card.limit)}
                   </p>
                   <p>Fechamento: dia {card.closingDay ?? "-"}</p>
                   <p>Vencimento: dia {card.dueDay ?? "-"}</p>
+                </div>
+
+                <div className="space-y-1 text-sm text-current/80">
+                  <p className="text-xs uppercase tracking-wide text-current/70">
+                    Fatura atual
+                  </p>
+                  <p className="text-lg font-semibold text-current">
+                    {formatBRL(invoiceTotal)}
+                  </p>
+                  {cycleLabel && <p>Ciclo: {cycleLabel}</p>}
+                  <button
+                    type="button"
+                    onClick={() => invoice && openPaymentDialog(invoice)}
+                    disabled={invoiceTotal <= 0}
+                    className="w-full rounded-full border border-white/40 bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/30 disabled:border-white/20 disabled:text-white/40"
+                  >
+                    Registrar pagamento
+                  </button>
                 </div>
               </div>
             );
@@ -643,6 +757,87 @@ const CreditCardsSection = () => {
         onCancel={() => !isDeleting && setCardToDelete(null)}
       />
 
+      {selectedInvoice && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-slate-950/70"
+            onClick={closePaymentDialog}
+          />
+          <div
+            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Registrar pagamento de fatura"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {selectedInvoice.brand ?? "Cartão"}
+                </p>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {selectedInvoice.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closePaymentDialog}
+                className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
+                aria-label="Fechar"
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Valor
+                  <input
+                    type="text"
+                    value={paymentValue}
+                    onChange={(event) => setPaymentValue(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+                    placeholder="0,00"
+                  />
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Data de pagamento
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(event) => setPaymentDate(event.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  />
+                </label>
+              </div>
+              {paymentError && (
+                <p className="text-sm text-rose-600">{paymentError}</p>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closePaymentDialog}
+                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
+                disabled={isPaying}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handlePaymentConfirm}
+                disabled={isPaying}
+                className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/80 disabled:opacity-60"
+              >
+                {isPaying ? "Registrando..." : "Confirmar pagamento"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
@@ -651,3 +846,5 @@ const CreditCardsSection = () => {
 };
 
 export default CreditCardsSection;
+
+
