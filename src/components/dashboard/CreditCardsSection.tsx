@@ -476,22 +476,20 @@ const CreditCardsSection = () => {
                   </div>
                 </div>
 
-                <div className="text-sm text-current opacity-90 space-y-1">
-                  <p className="font-semibold text-current opacity-100">
-                    {formatBRL(card.limit)}
+                <div className="space-y-2 text-current/80">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-current/70">
+                    FATURA ATUAL
                   </p>
-                  <p>Fechamento: dia {card.closingDay ?? "-"}</p>
-                  <p>Vencimento: dia {card.dueDay ?? "-"}</p>
-                </div>
-
-                <div className="space-y-1 text-sm text-current/80">
-                  <p className="text-xs uppercase tracking-wide text-current/70">
-                    Fatura atual
-                  </p>
-                  <p className="text-lg font-semibold text-current">
+                  <p className="text-3xl font-semibold text-current">
                     {formatBRL(invoiceTotal)}
                   </p>
-                  {cycleLabel && <p>Ciclo: {cycleLabel}</p>}
+                  <div className="text-xs text-current/70">
+                    Limite: {formatBRL(card.limit)} · Fechamento: dia{" "}
+                    {card.closingDay ?? "-"} · Vencimento: dia {card.dueDay ?? "-"}
+                  </div>
+                  {cycleLabel && (
+                    <p className="text-xs text-current/80">Ciclo: {cycleLabel}</p>
+                  )}
                   <button
                     type="button"
                     onClick={() => invoice && openPaymentDialog(invoice)}
