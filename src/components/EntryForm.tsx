@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CreditCard, Entry, EntryPayload, PaymentMethod } from "../types";
 import { listCardsCached } from "../services/cardsService";
+import { formatBRL } from "../utils/format";
 import {
   formatPaymentMethodLabel,
   isPaymentMethodCredit,
@@ -17,11 +18,6 @@ type EntryFormProps = {
 
 type FormErrors = Partial<Record<keyof EntryPayload, string>>;
 
-const normalizeAmount = (value: string) => {
-  const sanitized = value.replace(/\./g, "").replace(",", ".");
-  return Number(sanitized);
-};
-
 const resolveEntryPaymentMethod = (entry?: Partial<Entry>): PaymentMethod => {
   if (entry?.paymentMethod) {
     return mapToPaymentMethod(entry.paymentMethod) ?? "CASH";
@@ -30,13 +26,26 @@ const resolveEntryPaymentMethod = (entry?: Partial<Entry>): PaymentMethod => {
   return "CASH";
 };
 
+const toInitialAmountDigits = (value?: number) =>
+  value !== undefined ? String(Math.round(Math.abs(value) * 100)) : "";
+
+const formatFromCents = (digits: string) => {
+  if (!digits) return "";
+  const cents = Number(digits);
+  if (Number.isNaN(cents)) return "";
+  return formatBRL(cents / 100);
+};
+
 const formatCardLabel = (card: CreditCard) =>
   card.brand ? `${card.name} \u2022 ${card.brand}` : card.name;
 
 const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: EntryFormProps) => {
   const [description, setDescription] = useState(initialValues?.description ?? "");
-  const [amount, setAmount] = useState(
-    initialValues?.amount !== undefined ? String(initialValues.amount) : "",
+  const [amount, setAmount] = useState(() =>
+    initialValues?.amount !== undefined ? formatBRL(initialValues.amount) : "",
+  );
+  const [amountDigits, setAmountDigits] = useState(() =>
+    toInitialAmountDigits(initialValues?.amount),
   );
   const [category, setCategory] = useState(initialValues?.category ?? "");
   const [date, setDate] = useState(
@@ -55,11 +64,22 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isInstallmentEntry = Boolean(initialValues?.installmentGroupId);
 
+  const handleAmountInput = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    setAmountDigits(digits);
+    if (!digits) {
+      setAmount("");
+      return;
+    }
+    setAmount(formatFromCents(digits));
+  };
+
   useEffect(() => {
     setDescription(initialValues?.description ?? "");
     setAmount(
-      initialValues?.amount !== undefined ? String(initialValues.amount) : "",
+      initialValues?.amount !== undefined ? formatBRL(initialValues.amount) : "",
     );
+    setAmountDigits(toInitialAmountDigits(initialValues?.amount));
     setCategory(initialValues?.category ?? "");
     setDate(initialValues?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
     const nextPayment = resolveEntryPaymentMethod(initialValues);
@@ -110,8 +130,10 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
     if (!date) nextErrors.date = "Data obrigatoria";
     if (!paymentMethod) nextErrors.paymentMethod = "Pagamento obrigatorio";
 
-    const parsedAmount = normalizeAmount(amount);
-    if (!amount.trim() || Number.isNaN(parsedAmount)) {
+    const hasDigits = Boolean(amountDigits.trim());
+    const parsedCents = Number(amountDigits || "0");
+    const parsedAmount = hasDigits ? parsedCents / 100 : NaN;
+    if (!hasDigits || Number.isNaN(parsedAmount)) {
       nextErrors.amount = "Valor invalido";
     } else if (parsedAmount === 0) {
       nextErrors.amount = "Valor deve ser diferente de zero";
@@ -131,6 +153,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
       source,
       paymentMethod,
       cardId: isPaymentMethodCredit(paymentMethod) && cardId ? cardId : null,
+      amount: parsedAmount,
     };
   };
 
@@ -184,7 +207,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
             type="text"
             inputMode="decimal"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => handleAmountInput(e.target.value)}
             className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             placeholder="0,00"
             required
