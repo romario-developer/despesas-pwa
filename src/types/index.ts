@@ -108,6 +108,7 @@ export type CardInvoice = {
   color?: string;
   textColor?: string;
   invoiceTotal: number;
+  nextInvoiceTotal?: number;
   closingDay?: number;
   dueDay?: number;
   cycleStart?: string;

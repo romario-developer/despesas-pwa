@@ -434,9 +434,17 @@ const CreditCardsSection = () => {
               : "border-black/20 bg-black/10";
             const invoice = invoiceByCardId[card.id];
             const invoiceTotal = invoice?.invoiceTotal ?? 0;
+            const nextInvoiceTotal = invoice?.nextInvoiceTotal ?? 0;
             const cycleLabel =
               invoice?.cycleStart && invoice?.cycleEnd
                 ? `${formatDate(invoice.cycleStart)} - ${formatDate(invoice.cycleEnd)}`
+                : null;
+            const showNextInvoiceInfo = invoiceTotal === 0 && nextInvoiceTotal > 0;
+            const nextClosingSensor = invoice?.cycleEnd ?? invoice?.cycleStart;
+            const nextClosingLabel = nextClosingSensor
+              ? formatDate(nextClosingSensor)
+              : card.closingDay
+                ? String(card.closingDay).padStart(2, "0")
                 : null;
 
             return (
@@ -489,6 +497,21 @@ const CreditCardsSection = () => {
                   </div>
                   {cycleLabel && (
                     <p className="text-xs text-current/80">Ciclo: {cycleLabel}</p>
+                  )}
+                  {showNextInvoiceInfo && (
+                    <div className="mt-2 space-y-1 text-current/80">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-current/70">
+                        PRÓXIMA FATURA
+                      </p>
+                      <p className="text-sm font-semibold text-current">
+                        {formatBRL(nextInvoiceTotal)}
+                      </p>
+                      {nextClosingLabel && (
+                        <p className="text-xs text-current/70">
+                          Fecha em {nextClosingLabel}
+                        </p>
+                      )}
+                    </div>
                   )}
                   <button
                     type="button"

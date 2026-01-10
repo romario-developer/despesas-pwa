@@ -233,6 +233,10 @@ const normalizeInvoice = (value: RawInvoice): CardInvoice | null => {
   const color = typeof data.color === "string" ? data.color.trim() : undefined;
   const textColor = typeof data.textColor === "string" ? data.textColor.trim() : undefined;
   const invoiceTotal = normalizeNumber(data.invoiceTotal ?? data.total ?? data.amount ?? 0) ?? 0;
+  const nextInvoiceTotal =
+    normalizeNumber(
+      data.nextInvoiceTotal ?? data.next_total ?? data.nextInvoice ?? data.nextAmount ?? data.nextAmountValue,
+    ) ?? undefined;
   const closingDay = normalizeDay(data.closingDay);
   const dueDay = normalizeDay(data.dueDay);
   const cycleStart = typeof data.cycleStart === "string" ? data.cycleStart : undefined;
@@ -247,6 +251,7 @@ const normalizeInvoice = (value: RawInvoice): CardInvoice | null => {
     color: color || undefined,
     textColor: textColor || undefined,
     invoiceTotal,
+    nextInvoiceTotal,
     closingDay,
     dueDay,
     cycleStart,
