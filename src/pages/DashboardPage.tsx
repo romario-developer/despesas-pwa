@@ -7,11 +7,12 @@ import QuickEntryCard from "../components/dashboard/QuickEntryCard";
 import CreditCardsSection from "../components/dashboard/CreditCardsSection";
 import MonthChipsBar from "../components/MonthChipsBar";
 import { listEntries } from "../api/entries";
-import { listCardInvoices } from "../api/cards";
+import { listCardInvoices, payCardInvoice } from "../api/cards";
 import { getDashboardSummary } from "../api/dashboard";
 import { monthToRange } from "../utils/dateRange";
 import { formatBRL, formatDate } from "../utils/format";
 import { getReadableTextColor } from "../utils/colors";
+import { parseCurrencyInput } from "../utils/format";
 import { ENTRIES_CHANGED, notifyEntriesChanged } from "../utils/entriesEvents";
 import {
   buildMonthList,
@@ -63,6 +64,11 @@ const DashboardPage = () => {
   const [invoices, setInvoices] = useState<CardInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<CardInvoice | null>(null);
+  const [paymentValue, setPaymentValue] = useState("");
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(
     null,
   );
@@ -145,6 +151,49 @@ const DashboardPage = () => {
     }
   }, []);
 
+  const formatInputValue = (value: number) => {
+    return value.toFixed(2).replace(".", ",");
+  };
+
+  const openPaymentDialog = (invoice: CardInvoice) => {
+    setSelectedInvoice(invoice);
+    setPaymentValue(formatInputValue(invoice.invoiceTotal));
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentError(null);
+  };
+
+  const closePaymentDialog = () => {
+    setSelectedInvoice(null);
+    setPaymentValue("");
+    setPaymentError(null);
+  };
+
+  const handlePaymentConfirm = async () => {
+    if (!selectedInvoice) return;
+    const amount = parseCurrencyInput(paymentValue);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentError("Informe um valor valido.");
+      return;
+    }
+    setPaymentError(null);
+    setIsPaying(true);
+    try {
+      await payCardInvoice({
+        cardId: selectedInvoice.cardId,
+        amount,
+        paymentDate,
+      });
+      setToast({ message: "Fatura paga com sucesso", type: "success" });
+      closePaymentDialog();
+      await loadInvoices();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao registrar pagamento.";
+      setPaymentError(message);
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard, loadInvoices]);
@@ -182,7 +231,7 @@ const DashboardPage = () => {
       window.removeEventListener(ENTRIES_CHANGED, refresh);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [loadDashboard]);
+  }, [loadDashboard, loadInvoices]);
 
   useEffect(() => {
     const isLocalHost =
@@ -316,18 +365,18 @@ const DashboardPage = () => {
               <p className="mt-3 text-sm text-slate-500">Carregando faturas...</p>
             ) : invoices.length ? (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {invoices.map((invoice) => {
-                  const cardLabel = invoice.brand
-                    ? `${invoice.cardName} • ${invoice.brand}`
-                    : invoice.cardName;
-                  const background = invoice.color ?? "#0f172a";
-                  const textColor = getReadableTextColor(background);
-                  const cycleLabel =
-                    invoice.cycleStart && invoice.cycleEnd
-                      ? `${formatDate(invoice.cycleStart)} - ${formatDate(invoice.cycleEnd)}`
-                      : null;
-                  return (
-                    <div
+                  {invoices.map((invoice) => {
+                    const cardLabel = invoice.brand
+                      ? `${invoice.cardName} • ${invoice.brand}`
+                      : invoice.cardName;
+                    const background = invoice.color ?? "#0f172a";
+                    const textColor = getReadableTextColor(background);
+                    const cycleLabel =
+                      invoice.cycleStart && invoice.cycleEnd
+                        ? `${formatDate(invoice.cycleStart)} - ${formatDate(invoice.cycleEnd)}`
+                        : null;
+                    return (
+                      <div
                       key={invoice.cardId}
                       className="space-y-3 rounded-2xl border border-white/40 p-4 shadow-sm"
                       style={{ backgroundColor: background, color: textColor }}
@@ -351,6 +400,14 @@ const DashboardPage = () => {
                         <p>Vence dia {invoice.dueDay ?? "-"}</p>
                         {cycleLabel && <p>Ciclo: {cycleLabel}</p>}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => openPaymentDialog(invoice)}
+                        disabled={invoice.invoiceTotal <= 0}
+                        className="w-full rounded-full border border-white/40 bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/30 disabled:border-white/20 disabled:text-white/40"
+                      >
+                        Registrar pagamento
+                      </button>
                     </div>
                   );
                 })}
@@ -424,6 +481,87 @@ const DashboardPage = () => {
               </div>
             </div>
           </div>
+
+          {selectedInvoice && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div
+                className="absolute inset-0 bg-slate-950/70"
+                onClick={closePaymentDialog}
+              />
+              <div
+                className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Registrar pagamento de fatura"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {selectedInvoice.brand ?? "Cartao"}
+                    </p>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {selectedInvoice.cardName}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closePaymentDialog}
+                    className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
+                    aria-label="Fechar"
+                  >
+                    <span aria-hidden="true">&times;</span>
+                  </button>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Valor
+                      <input
+                        type="text"
+                        value={paymentValue}
+                        onChange={(event) => setPaymentValue(event.target.value)}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+                        placeholder="0,00"
+                      />
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Data de pagamento
+                      <input
+                        type="date"
+                        value={paymentDate}
+                        onChange={(event) => setPaymentDate(event.target.value)}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+                      />
+                    </label>
+                  </div>
+                  {paymentError && (
+                    <p className="text-sm text-rose-600">{paymentError}</p>
+                  )}
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closePaymentDialog}
+                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300"
+                    disabled={isPaying}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePaymentConfirm}
+                    disabled={isPaying}
+                    className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/80 disabled:opacity-60"
+                  >
+                    {isPaying ? "Registrando..." : "Confirmar pagamento"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <QuickEntryCard onCreated={notifyEntriesChanged} />
 

@@ -294,3 +294,17 @@ export const deleteCard = async (id: string): Promise<void> => {
     method: "DELETE",
   });
 };
+
+export type CardPaymentPayload = {
+  cardId: string;
+  amount: number;
+  paymentDate: string;
+};
+
+export const payCardInvoice = (payload: CardPaymentPayload) => {
+  return apiRequest({
+    url: "/api/cards/payments",
+    method: "POST",
+    data: payload,
+  });
+};
