@@ -43,6 +43,7 @@ const EntriesPage = () => {
   const [entries, setEntries] = useState<Entry[] | unknown>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [entriesPollingEnabled, setEntriesPollingEnabled] = useState(true);
   const [entryToDelete, setEntryToDelete] = useState<Entry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(
@@ -124,8 +125,17 @@ const EntriesPage = () => {
         setEntries(sorted);
         setError(null);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro ao carregar os lancamentos.";
+        const errorWithStatus = err as Error & { status?: number };
+        const status = errorWithStatus?.status;
+        const isServerError = typeof status === "number" && status >= 500;
+        const message = isServerError
+          ? "Erro ao carregar lançamentos"
+          : err instanceof Error
+          ? err.message
+          : "Erro ao carregar os lancamentos.";
+        if (isServerError) {
+          setEntriesPollingEnabled(false);
+        }
         if (!silent) {
           setError(message);
           setEntries([]);
@@ -144,27 +154,28 @@ const EntriesPage = () => {
   }, [loadEntries]);
 
   useEffect(() => {
-    const refresh = () => loadEntries({ silent: true });
+    const refresh = () => {
+      if (!entriesPollingEnabled) return;
+      loadEntries({ silent: true });
+    };
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         refresh();
       }
     };
 
-    const intervalId = window.setInterval(refresh, 30000);
     window.addEventListener("focus", refresh);
     window.addEventListener("online", refresh);
     window.addEventListener(ENTRIES_CHANGED, refresh);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      window.clearInterval(intervalId);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("online", refresh);
       window.removeEventListener(ENTRIES_CHANGED, refresh);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [loadEntries]);
+  }, [loadEntries, entriesPollingEnabled]);
 
   const safeCategories = Array.isArray(categories)
     ? categories
@@ -256,6 +267,11 @@ const EntriesPage = () => {
       setEntryToDelete(null);
     }
   };
+
+  const handleRetryEntries = useCallback(() => {
+    setEntriesPollingEnabled(true);
+    loadEntries();
+  }, [loadEntries]);
 
   const handleDeleteClick = (entry: Entry) => {
     setEntryToDelete(entry);
@@ -363,9 +379,16 @@ const EntriesPage = () => {
         )}
 
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
+          <div className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={handleRetryEntries}
+              className="mt-2 inline-flex items-center rounded bg-white px-3 py-0.5 text-xs font-semibold uppercase tracking-wide text-red-700 transition hover:bg-red-100"
+            >
+              Tentar novamente
+            </button>
+          </div>
         )}
 
         {!isLoading && !error && (
