@@ -15,6 +15,10 @@ import {
   getCurrentMonthInTimeZone,
   getDefaultMonthRange,
 } from "../utils/months";
+import {
+  formatPaymentMethodLabel,
+  isPaymentMethodCredit,
+} from "../utils/paymentMethods";
 import { listCardsCached } from "../services/cardsService";
 import type { CreditCard, Entry } from "../types";
 
@@ -180,6 +184,15 @@ const EntriesPage = () => {
   const formatCardLabel = (card: CreditCard) =>
     card.brand ? `${card.name} • ${card.brand}` : card.name;
 
+  const badgeBaseClass =
+    "inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600";
+
+  const renderPaymentBadge = (entry: Entry) => {
+    const label = formatPaymentMethodLabel(entry.paymentMethod);
+    if (!label) return null;
+    return <span className={badgeBaseClass}>{label}</span>;
+  };
+
   const getCardBadge = (entry: Entry) => {
     if (!entry.cardId) return null;
     const card = cardsById.get(entry.cardId);
@@ -190,6 +203,19 @@ const EntriesPage = () => {
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
         <span>{label}</span>
       </span>
+    );
+  };
+
+  const renderEntryBadges = (entry: Entry) => {
+    const methodBadge = renderPaymentBadge(entry);
+    const shouldShowCard = isPaymentMethodCredit(entry.paymentMethod);
+    const cardBadge = shouldShowCard ? getCardBadge(entry) : null;
+    if (!methodBadge && !cardBadge) return null;
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {methodBadge}
+        {cardBadge}
+      </div>
     );
   };
 
@@ -333,36 +359,36 @@ const EntriesPage = () => {
           <>
             <div className="mt-4 space-y-3 md:hidden">
               {safeEntries.length ? (
-                safeEntries.map((entry) => {
-                  const cardBadge = getCardBadge(entry);
-                  return (
-                    <div
-                      key={entry.id}
-                      className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between">
+                safeEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
                         <p className="text-sm font-semibold text-slate-900">
                           {entry.description}
                         </p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {formatCurrency(entry.amount)}
-                        </p>
+                        {renderEntryBadges(entry)}
                       </div>
-                      <p className="text-xs text-slate-600">
-                        {formatDate(entry.date)} - {entry.category}
-                        {entry.categoryInferred && (
-                          <span className="ml-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
-                            auto
-                          </span>
-                        )}
-                        {cardBadge && <span className="ml-2">{cardBadge}</span>}
+                      <p className="text-sm font-semibold text-slate-900">
+                        {formatCurrency(entry.amount)}
                       </p>
-                      <p className="text-xs text-slate-500">Origem: {entry.source}</p>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Link
-                          to={`/entries/${entry.id}/edit`}
-                          className="text-xs font-semibold text-primary hover:underline"
-                        >
+                    </div>
+                    <p className="text-xs text-slate-600">
+                      {formatDate(entry.date)} - {entry.category}
+                      {entry.categoryInferred && (
+                        <span className="ml-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-500">
+                          auto
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-slate-500">Origem: {entry.source}</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Link
+                      to={`/entries/${entry.id}/edit`}
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
                           Editar
                         </Link>
                         <button
@@ -393,14 +419,15 @@ const EntriesPage = () => {
                     <th className="px-4 py-3 text-right">Acoes</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {safeEntries.length ? (
-                    safeEntries.map((entry) => {
-                      const cardBadge = getCardBadge(entry);
-                      return (
+                  <tbody className="divide-y divide-slate-100">
+                    {safeEntries.length ? (
+                      safeEntries.map((entry) => (
                         <tr key={entry.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 font-medium text-slate-900">
-                            {entry.description}
+                            <div className="flex flex-col gap-1">
+                              <span>{entry.description}</span>
+                              {renderEntryBadges(entry)}
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-slate-700">
                             {formatDate(entry.date)}
@@ -413,7 +440,6 @@ const EntriesPage = () => {
                                   auto
                                 </span>
                               )}
-                              {cardBadge}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-slate-700">{entry.source}</td>
@@ -438,9 +464,8 @@ const EntriesPage = () => {
                             </div>
                           </td>
                         </tr>
-                      );
-                    })
-                  ) : (
+                      ))
+                    ) : (
                     <tr>
                       <td className="px-4 py-4 text-sm text-slate-500" colSpan={6}>
                         Nenhum lancamento encontrado.

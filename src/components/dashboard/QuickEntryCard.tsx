@@ -4,6 +4,7 @@ import { createQuickEntry, type QuickEntryResult } from "../../services/quickEnt
 import { formatBRL } from "../../utils/format";
 import { cardBase, cardHover, subtleText } from "../../styles/dashboardTokens";
 import { notifyEntriesChanged } from "../../utils/entriesEvents";
+import { formatPaymentMethodLabel } from "../../utils/paymentMethods";
 
 type QuickEntryCardProps = {
   onCreated?: () => void | Promise<void>;
@@ -21,6 +22,28 @@ const buildSuccessMessage = (result: QuickEntryResult) => {
   }
 
   return "Despesa registrada com sucesso.";
+};
+
+const formatQuickEntryBadge = (() => {
+  const baseClass =
+    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold";
+  return {
+    method: `${baseClass} border-slate-200 bg-slate-50 text-slate-700`,
+    card: `${baseClass} border-slate-200 bg-white text-slate-600`,
+  };
+})();
+
+const formatQuickEntryCardLabel = (card: QuickEntryResult["card"]) => {
+  if (!card) return null;
+  const parts = [
+    card.name?.trim(),
+    card.brand?.trim(),
+  ].filter(Boolean);
+  if (!parts.length && card.id) {
+    parts.push(card.id);
+  }
+  if (!parts.length) return null;
+  return parts.join(" • ");
 };
 
 const resolveErrorMessage = (err: unknown) => {
@@ -44,6 +67,7 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<QuickEntryResult | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -65,6 +89,7 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
     try {
       const result = await createQuickEntry(trimmed);
       setSuccessMessage(buildSuccessMessage(result));
+      setLastResult(result);
       setText("");
       if (onCreated) {
         await onCreated();
@@ -75,6 +100,7 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
         inputRef.current?.focus();
       });
     } catch (err) {
+      setLastResult(null);
       setErrorMessage(resolveErrorMessage(err));
     } finally {
       setIsSubmitting(false);
@@ -89,6 +115,26 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
     if (successMessage) {
       setSuccessMessage(null);
     }
+    if (lastResult) {
+      setLastResult(null);
+    }
+  };
+
+  const renderQuickEntryBadges = (result: QuickEntryResult | null) => {
+    if (!result) return null;
+    const methodLabel = formatPaymentMethodLabel(result.paymentMethod);
+    const cardLabel = formatQuickEntryCardLabel(result.card);
+    if (!methodLabel && !cardLabel) return null;
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {methodLabel && (
+          <span className={formatQuickEntryBadge.method}>{methodLabel}</span>
+        )}
+        {cardLabel && (
+          <span className={formatQuickEntryBadge.card}>{cardLabel}</span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -123,6 +169,7 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
         {successMessage && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             {successMessage}
+            {renderQuickEntryBadges(lastResult)}
           </div>
         )}
         {errorMessage && (

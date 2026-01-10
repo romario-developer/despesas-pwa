@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CreditCard, Entry, EntryPayload, PaymentMethod } from "../types";
 import { listCardsCached } from "../services/cardsService";
+import {
+  formatPaymentMethodLabel,
+  isPaymentMethodCredit,
+  mapToPaymentMethod,
+  PAYMENT_METHODS,
+} from "../utils/paymentMethods";
 
 type EntryFormProps = {
   initialValues?: Partial<Entry>;
@@ -11,30 +17,21 @@ type EntryFormProps = {
 
 type FormErrors = Partial<Record<keyof EntryPayload, string>>;
 
-const PAYMENT_METHODS: PaymentMethod[] = [
-  "Dinheiro",
-  "Debito",
-  "Credito",
-  "Pix",
-  "Transferencia",
-  "Outro",
-];
-
 const normalizeAmount = (value: string) => {
   const sanitized = value.replace(/\./g, "").replace(",", ".");
   return Number(sanitized);
 };
 
-const resolvePaymentMethod = (entry?: Partial<Entry>): PaymentMethod => {
-  if (entry?.paymentMethod && PAYMENT_METHODS.includes(entry.paymentMethod)) {
-    return entry.paymentMethod;
+const resolveEntryPaymentMethod = (entry?: Partial<Entry>): PaymentMethod => {
+  if (entry?.paymentMethod) {
+    return mapToPaymentMethod(entry.paymentMethod) ?? "Dinheiro";
   }
   if (entry?.cardId) return "Credito";
   return "Dinheiro";
 };
 
 const formatCardLabel = (card: CreditCard) =>
-  card.brand ? `${card.name} • ${card.brand}` : card.name;
+  card.brand ? `${card.name} \u2022 ${card.brand}` : card.name;
 
 const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: EntryFormProps) => {
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -47,7 +44,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
   );
   const [source] = useState(initialValues?.source ?? "manual");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() =>
-    resolvePaymentMethod(initialValues),
+    resolveEntryPaymentMethod(initialValues),
   );
   const [cardId, setCardId] = useState(initialValues?.cardId ?? "");
   const [cards, setCards] = useState<CreditCard[]>([]);
@@ -64,7 +61,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
     );
     setCategory(initialValues?.category ?? "");
     setDate(initialValues?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
-    const nextPayment = resolvePaymentMethod(initialValues);
+    const nextPayment = resolveEntryPaymentMethod(initialValues);
     const nextCardId = initialValues?.cardId ?? "";
     setPaymentMethod(nextPayment);
     setCardId(nextPayment === "Credito" ? nextCardId : "");
@@ -132,7 +129,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
       date,
       source,
       paymentMethod,
-      cardId: paymentMethod === "Credito" && cardId ? cardId : null,
+      cardId: isPaymentMethodCredit(paymentMethod) && cardId ? cardId : null,
     };
   };
 
@@ -154,7 +151,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
   };
 
   const categoryOptions = useMemo(() => safeCategories, [safeCategories]);
-  const isCredit = paymentMethod === "Credito";
+  const isCredit = isPaymentMethodCredit(paymentMethod);
   const selectedCard = useMemo(
     () => cards.find((card) => card.id === cardId),
     [cardId, cards],
@@ -230,7 +227,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
             onChange={(e) => {
               const next = e.target.value as PaymentMethod;
               setPaymentMethod(next);
-              if (next !== "Credito") {
+              if (!isPaymentMethodCredit(next)) {
                 setCardId("");
               }
             }}
@@ -238,7 +235,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
           >
             {PAYMENT_METHODS.map((method) => (
               <option key={method} value={method}>
-                {method}
+                {formatPaymentMethodLabel(method)}
               </option>
             ))}
           </select>
