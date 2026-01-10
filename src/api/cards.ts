@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, getStoredToken } from "./client";
 import { api } from "../services/api";
 import type { CreditCard } from "../types";
 
@@ -25,6 +25,15 @@ type RawCard = {
   color?: unknown;
   textColor?: unknown;
 } | null;
+
+type ListCardsResponse =
+  | RawCard[]
+  | {
+      cards?: RawCard[];
+      data?: RawCard[];
+      items?: RawCard[];
+    }
+  | null;
 
 const normalizeBrand = (value?: string) => {
   const trimmed = value?.trim();
@@ -117,12 +126,36 @@ export type ListCardsResult = {
 };
 
 export const listCards = async (): Promise<ListCardsResult> => {
-  const response = await api.request<RawCard[] | null>({
+  const token = getStoredToken();
+  const response = await api.request<ListCardsResponse>({
     url: "/api/cards",
     method: "GET",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
-  const list = Array.isArray(response.data) ? response.data : [];
+  let list: RawCard[] | undefined;
+  if (Array.isArray(response.data)) {
+    list = response.data;
+  } else if (response.data && typeof response.data === "object") {
+    if (Array.isArray(response.data.cards)) {
+      list = response.data.cards;
+    } else if (Array.isArray(response.data.data)) {
+      list = response.data.data;
+    } else if (Array.isArray(response.data.items)) {
+      list = response.data.items;
+    }
+  }
+
+  if (!list) {
+    const error = new Error("Resposta invalida do endpoint /api/cards.") as Error & {
+      status?: number;
+      payload?: unknown;
+    };
+    error.status = response.status;
+    error.payload = response.data;
+    throw error;
+  }
+
   const cards = list.map((item) => normalizeCard(item)).filter(Boolean) as CreditCard[];
   return {
     cards,
