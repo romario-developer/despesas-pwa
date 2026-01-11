@@ -230,8 +230,12 @@ const EntriesPage = () => {
     const methodBadge = renderPaymentBadge(entry);
     const shouldShowCard = isPaymentMethodCredit(entry.paymentMethod);
     const cardBadge = shouldShowCard ? getCardBadge(entry) : null;
-    const installmentBadge = entry.installmentGroupId ? (
-      <span className={badgeBaseClass}>Parcelado</span>
+    const hasInstallments =
+      typeof entry.installmentTotal === "number"
+        ? entry.installmentTotal > 1
+        : Boolean(entry.installmentGroupId);
+    const installmentBadge = hasInstallments ? (
+      <span className={badgeBaseClass}>PARCELADO</span>
     ) : null;
     if (!methodBadge && !cardBadge && !installmentBadge) return null;
     return (

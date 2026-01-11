@@ -218,7 +218,7 @@ const EntryForm = ({ initialValues, categories = [], onSubmit, onCancel }: Entry
         )}
         {isInstallmentEntry && (
           <p className="mt-1 text-xs text-slate-500">
-            Valor faz parte de um parcelamento e nao pode ser alterado.
+            Valor de parcela não pode ser alterado aqui.
           </p>
         )}
       </div>

@@ -147,9 +147,7 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
       <div className="space-y-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Entrada rápida</h3>
-          <p className={subtleText}>
-            Digite: mercado 50 | uber 23,90 | pix joao 100
-          </p>
+          <p className={subtleText}>Digite: mercado 96,54 2x inter</p>
         </div>
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-center"
@@ -160,7 +158,7 @@ const QuickEntryCard = ({ onCreated }: QuickEntryCardProps) => {
             type="text"
             value={text}
             onChange={(event) => handleChange(event.target.value)}
-            placeholder="Digite uma entrada"
+            placeholder="Ex: mercado 96,54 2x inter"
             className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <button
