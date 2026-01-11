@@ -15,6 +15,10 @@ type RawDashboardSummary = {
   balance?: unknown;
   incomeTotal?: unknown;
   expenseTotal?: unknown;
+  expenseCashTotal?: unknown;
+  expenseCreditTotal?: unknown;
+  expense_cash_total?: unknown;
+  expense_credit_total?: unknown;
   byCategory?: unknown;
 } | null;
 
@@ -72,6 +76,12 @@ export const getDashboardSummary = async (month: string): Promise<DashboardSumma
     month: typeof data?.month === "string" ? data.month : month,
     balance: normalizeNumber(data?.balance),
     incomeTotal: normalizeNumber(data?.incomeTotal),
+    expenseCashTotal: normalizeNumber(
+      data?.expenseCashTotal ?? data?.expense_cash_total,
+    ),
+    expenseCreditTotal: normalizeNumber(
+      data?.expenseCreditTotal ?? data?.expense_credit_total,
+    ),
     expenseTotal: normalizeNumber(data?.expenseTotal),
     byCategory: normalizeCategories(data?.byCategory),
   };

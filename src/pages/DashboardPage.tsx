@@ -198,7 +198,8 @@ const DashboardPage = () => {
 
   const balance = summary?.balance ?? 0;
   const incomeTotal = summary?.incomeTotal ?? 0;
-  const expenseTotal = summary?.expenseTotal ?? 0;
+  const cashExpenses = summary?.expenseCashTotal ?? 0;
+  const creditExpenses = summary?.expenseCreditTotal ?? 0;
   const renderSummaryValue = (value: number) => (summary ? formatBRL(value) : "--");
   const handleMonthToggle = () => {
     setIsMonthPanelOpen((prev) => !prev);
@@ -266,11 +267,9 @@ const DashboardPage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            <div className={`${cardBase} ${cardHover} col-span-2 space-y-1 md:col-span-1`}>
-              <p className="text-xs font-semibold uppercase text-slate-500">
-                Saldo em conta
-              </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className={`${cardBase} ${cardHover} space-y-1 md:col-span-2 lg:col-span-2`}>
+              <p className="text-xs font-semibold uppercase text-slate-500">Saldo em conta</p>
               <p className="text-3xl font-semibold text-slate-900">
                 {renderSummaryValue(balance)}
               </p>
@@ -282,9 +281,15 @@ const DashboardPage = () => {
               </p>
             </div>
             <div className={`${cardBase} ${cardHover} space-y-1`}>
-              <p className="text-xs font-semibold uppercase text-slate-500">Despesas</p>
+              <p className="text-xs font-semibold uppercase text-slate-500">Gastos (Caixa)</p>
               <p className="text-2xl font-semibold text-rose-600">
-                {renderSummaryValue(expenseTotal)}
+                {renderSummaryValue(cashExpenses)}
+              </p>
+            </div>
+            <div className={`${cardBase} ${cardHover} space-y-1`}>
+              <p className="text-xs font-semibold uppercase text-slate-500">Gastos (Crédito)</p>
+              <p className="text-2xl font-semibold text-rose-600">
+                {renderSummaryValue(creditExpenses)}
               </p>
             </div>
           </div>

@@ -63,6 +63,8 @@ export type DashboardSummary = {
   month: string;
   balance: number;
   incomeTotal: number;
+  expenseCashTotal: number;
+  expenseCreditTotal: number;
   expenseTotal: number;
   byCategory: DashboardCategory[];
 };
