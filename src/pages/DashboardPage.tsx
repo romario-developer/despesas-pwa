@@ -398,7 +398,7 @@ const DashboardPage = () => {
                 ))}
               </ul>
             ) : (
-              <p className={subtleText}>Nenhum lancamento encontrado para este mes.</p>
+              <p className={subtleText}>Nenhum Lancamento encontrado para este mes.</p>
             )}
           </DashboardSection>
 
