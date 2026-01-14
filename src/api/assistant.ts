@@ -1,10 +1,16 @@
 import { apiRequest } from "./client";
 
+export type AssistantActionSummaryPayload = {
+  description?: string;
+  amount?: number | string;
+  [key: string]: unknown;
+};
+
 export type AssistantAction = {
   type: string;
   entity: string;
   entityId?: string;
-  summary?: string;
+  summary?: string | AssistantActionSummaryPayload;
 };
 
 export type AssistantResponse = {

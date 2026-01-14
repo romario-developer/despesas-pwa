@@ -3,6 +3,7 @@ import { notifyEntriesChanged } from "../utils/entriesEvents";
 import { getCurrentMonthInTimeZone } from "../utils/months";
 import { chatWithAssistant } from "../api/assistant";
 import type { AssistantAction } from "../api/assistant";
+import { formatCurrency } from "../utils/format";
 
 const STORAGE_KEY = "assistant_conversation_id";
 
@@ -21,6 +22,66 @@ const defaultSuggestions = [
   "Desfazer Ãºltimo",
   "Registrar receita",
 ];
+
+const ASSISTANT_FALLBACK_MESSAGE = "Assistente respondeu em um formato inesperado. Tente novamente.";
+
+const normalizeAssistantText = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+};
+
+const formatActionSummary = (action: AssistantAction): string | null => {
+  const summary = action.summary;
+  if (!summary) return null;
+
+  if (typeof summary === "string") {
+    const trimmed = summary.trim();
+    return trimmed || null;
+  }
+
+  if (typeof summary === "object" && summary !== null) {
+    const description =
+      typeof summary.description === "string" && summary.description.trim()
+        ? summary.description.trim()
+        : undefined;
+    const amountValue =
+      typeof summary.amount === "number"
+        ? formatCurrency(summary.amount)
+        : typeof summary.amount === "string" && summary.amount.trim()
+        ? summary.amount.trim()
+        : undefined;
+
+    if (description || amountValue) {
+      const descriptionPart = description ? `: ${description}` : "";
+      const amountPart = amountValue ? ` — ${amountValue}` : "";
+      return `Registrado${descriptionPart}${amountPart}`;
+    }
+
+    const entries = Object.entries(summary)
+      .map(([key, value]) => {
+        if (typeof value === "string" && value.trim()) {
+          return `${key}: ${value.trim()}`;
+        }
+        if (typeof value === "number" || typeof value === "boolean") {
+          return `${key}: ${value}`;
+        }
+        return null;
+      })
+      .filter((entry): entry is string => Boolean(entry));
+
+    if (entries.length) {
+      return entries.join(" · ");
+    }
+  }
+
+  return null;
+};
 
 const readConversationId = () => {
   if (typeof window === "undefined") return undefined;
@@ -99,26 +160,26 @@ export const useAssistantChat = () => {
         handleActions(payload.actions);
         options?.onActions?.(payload.actions);
 
+        const assistantText =
+          normalizeAssistantText(payload.assistantMessage) ??
+          ASSISTANT_FALLBACK_MESSAGE;
         const assistantMessage: ChatMessage = {
           id: `assistant-${Date.now()}`,
           author: "assistant",
-          text: payload.assistantMessage,
+          text: assistantText,
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
-        if (payload.actions?.length) {
-          const summaryText = payload.actions
-            .map((item) => item.summary)
-            .filter(Boolean)
-            .join(" â€¢ ");
-          if (summaryText) {
-            const summaryMessage: ChatMessage = {
-              id: `summary-${Date.now()}`,
-              author: "summary",
-              text: summaryText,
-            };
-            setMessages((prev) => [...prev, summaryMessage]);
-          }
+        const summaryItems = (payload.actions ?? [])
+          .map(formatActionSummary)
+          .filter((item): item is string => Boolean(item));
+        if (summaryItems.length) {
+          const summaryMessage: ChatMessage = {
+            id: `summary-${Date.now()}`,
+            author: "summary",
+            text: summaryItems.join("   "),
+          };
+          setMessages((prev) => [...prev, summaryMessage]);
         }
 
         setSuggestions(payload.suggestions ?? defaultSuggestions);

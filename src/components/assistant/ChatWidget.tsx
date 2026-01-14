@@ -1,7 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import ChatMessageBubble from "./ChatMessageBubble";
 import { useAssistantChat } from "../../hooks/useAssistantChat";
+
+const ASSISTANT_CHAT_OPEN_KEY = "assistantChatOpen";
+
+const readAssistantChatOpenPreference = () => {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(ASSISTANT_CHAT_OPEN_KEY) === "true";
+};
 
 const QUICK_SUGGESTIONS = [
   "Quanto gastei esse mês?",
@@ -17,10 +24,34 @@ const ChatWidget = () => {
     suggestions,
     sendMessage,
     lastUserMessage,
+    resetConversation,
   } = useAssistantChat();
   const [inputValue, setInputValue] = useState("");
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(() =>
+    readAssistantChatOpenPreference(),
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      ASSISTANT_CHAT_OPEN_KEY,
+      chatOpen ? "true" : "false",
+    );
+  }, [chatOpen]);
+
+  const handleCloseChat = () => {
+    setInputValue("");
+    setChatOpen(false);
+  };
+
+  const handleOpenChat = () => setChatOpen(true);
+
+  const handleClearConversation = () => {
+    resetConversation();
+    setInputValue("");
+    setChatOpen(false);
+  };
 
   const allSuggestions = useMemo(
     () => Array.from(new Set([...(suggestions ?? []), ...QUICK_SUGGESTIONS])),
@@ -74,10 +105,18 @@ const ChatWidget = () => {
           </button>
           <button
             type="button"
-            onClick={() => setMobileOpen(false)}
-            className="text-xs font-semibold text-slate-500 transition hover:text-slate-700 sm:hidden"
+            onClick={handleClearConversation}
+            className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
           >
-            Fechar
+            Limpar
+          </button>
+          <button
+            type="button"
+            onClick={handleCloseChat}
+            aria-label="Fechar chat"
+            className="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-700"
+          >
+            ✕
           </button>
         </div>
       </div>
@@ -139,39 +178,31 @@ const ChatWidget = () => {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-20 flex sm:hidden">
+      <div className="fixed bottom-4 right-4 z-50 flex">
         <button
           type="button"
-          onClick={() => setMobileOpen(true)}
+          onClick={handleOpenChat}
           className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-lg shadow-primary/40"
         >
           Assistente
         </button>
       </div>
 
-      {mobileOpen && (
-        <div className="fixed inset-0 z-30 flex flex-col bg-white sm:hidden">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-              Assistente
-            </h3>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="text-sm font-semibold text-slate-500 transition hover:text-slate-700"
-            >
-              Fechar
-            </button>
+      {chatOpen && (
+        <div className="fixed inset-0 z-40 flex sm:hidden">
+          <div className="flex h-full w-full flex-col border border-slate-200 bg-white shadow-xl">
+            {renderContent()}
           </div>
-      {renderContent()}
-    </div>
-  )}
-
-      <div className="hidden sm:flex">
-        <div className="fixed bottom-4 right-4 top-16 z-10 w-80 rounded-3xl border border-slate-200 bg-white shadow-lg">
-          {renderContent()}
         </div>
-      </div>
+      )}
+
+      {chatOpen && (
+        <div className="hidden sm:flex">
+          <div className="fixed bottom-4 right-4 top-16 z-30 w-80 rounded-3xl border border-slate-200 bg-white shadow-lg">
+            {renderContent()}
+          </div>
+        </div>
+      )}
     </>
   );
 };
