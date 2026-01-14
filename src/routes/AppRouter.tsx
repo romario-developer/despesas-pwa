@@ -13,6 +13,7 @@ const EntryEditPage = lazy(() => import("../pages/EntryEditPage"));
 const PlanningPage = lazy(() => import("../pages/PlanningPage"));
 const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
 const CategoriesPage = lazy(() => import("../pages/CategoriesPage"));
+const CreditPage = lazy(() => import("../pages/CreditPage"));
 
 const AppRouter = () => (
   <BrowserRouter>
@@ -42,6 +43,7 @@ const AppRouter = () => (
             <Route path="/entries/:id/edit" element={<EntryEditPage />} />
             <Route path="/planning" element={<PlanningPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/credit" element={<CreditPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

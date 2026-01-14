@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import Toast from "../components/Toast";
 import DashboardSection from "../components/ui/DashboardSection";
 import QuickEntryCard from "../components/dashboard/QuickEntryCard";
-import CreditCardsSection from "../components/dashboard/CreditCardsSection";
 import MonthChipsBar from "../components/MonthChipsBar";
 import { listEntries } from "../api/entries";
 import { getDashboardSummary } from "../api/dashboard";
@@ -293,8 +292,21 @@ const DashboardPage = () => {
               </p>
             </div>
           </div>
-
-          <CreditCardsSection />
+          <div className="flex items-center justify-between gap-3 rounded-3xl border border-dashed border-slate-200 bg-white/80 px-4 py-3 shadow-sm">
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500">Crédito e faturas</p>
+              <p className="text-sm text-slate-600">
+                Acesse os cartões e acompanhe faturas recentes.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/credit")}
+              className="rounded-full bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow"
+            >
+              Ver detalhes
+            </button>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className={`${cardBase} ${cardHover} lg:col-span-2`}>

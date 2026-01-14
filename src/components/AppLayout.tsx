@@ -71,6 +71,9 @@ const AppLayout = () => {
             <NavLink to="/entries" className={linkClasses}>
               Lancamentos
             </NavLink>
+            <NavLink to="/credit" className={linkClasses}>
+              Crédito e faturas
+            </NavLink>
             <NavLink to="/categories" className={linkClasses}>
               Categorias
             </NavLink>
@@ -154,6 +157,13 @@ const AppLayout = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Lancamentos
+              </NavLink>
+              <NavLink
+                to="/credit"
+                className={mobileLinkClasses}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Crédito e faturas
               </NavLink>
               <NavLink
                 to="/categories"
