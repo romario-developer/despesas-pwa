@@ -15,6 +15,7 @@ import {
   getCurrentMonthInTimeZone,
   getDefaultMonthRange,
 } from "../utils/months";
+import { monthToRange } from "../utils/dateRange";
 import {
   formatPaymentMethodLabel,
   isPaymentMethodCredit,
@@ -49,6 +50,8 @@ const EntriesPage = () => {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(
     null,
   );
+
+  const selectedMonthRange = useMemo(() => monthToRange(month), [month]);
 
   useEffect(() => {
     const state = location.state as { toast?: { message: string; type: "success" | "error" } };
@@ -111,7 +114,8 @@ const EntriesPage = () => {
 
       try {
         const data = await listEntries({
-          month,
+          from: selectedMonthRange.from,
+          to: selectedMonthRange.to,
           category: category || undefined,
           q: search || undefined,
           cardId: cardId || undefined,
@@ -146,7 +150,7 @@ const EntriesPage = () => {
         }
       }
     },
-    [month, category, search, cardId],
+    [selectedMonthRange, category, search, cardId],
   );
 
   useEffect(() => {

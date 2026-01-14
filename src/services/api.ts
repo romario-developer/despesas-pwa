@@ -22,9 +22,4 @@ if (shouldLogApi) {
 export const api = axios.create({
   baseURL: apiBaseURL,
   timeout: 15000,
-  headers: {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-cache",
-    Pragma: "no-cache",
-  },
 });
