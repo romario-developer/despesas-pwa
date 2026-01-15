@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { updateSW } from "../main";
+import { applyUpdate } from "../main";
 import ChatWidget from "./assistant/ChatWidget";
 
 const linkClasses = ({ isActive }: { isActive: boolean }) =>
@@ -43,8 +43,9 @@ const AppLayout = () => {
 
   const handleUpdate = async () => {
     setIsUpdating(true);
+    setShowUpdate(false);
     try {
-      await updateSW(true);
+      await applyUpdate();
     } finally {
       setIsUpdating(false);
     }
